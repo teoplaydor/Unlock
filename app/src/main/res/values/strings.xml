@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Unlock</string>
+
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_running">Running</string>
+    <string name="nav_autostart">Autostart</string>
+    <string name="nav_diagnostics">Diagnostics</string>
+    <string name="nav_settings">Settings</string>
+</resources>
