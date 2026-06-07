@@ -64,12 +64,14 @@ fun AutostartScreen(vm: AutostartViewModel = viewModel()) {
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
                             Text(entry.receiverClass.substringAfterLast('.'), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (entry.isProtected) TagChip("Core", MaterialTheme.colorScheme.error)
                             if (!entry.isEnabledComponent) TagChip("off", MaterialTheme.colorScheme.error)
                         }
                     }
                     Switch(
                         checked = entry.isEnabledComponent,
-                        enabled = state.shizukuReady,
+                        // Block turning OFF a protected package's autostart; turning ON is fine.
+                        enabled = state.shizukuReady && !(entry.isProtected && entry.isEnabledComponent),
                         onCheckedChange = { vm.toggleComponent(entry) },
                     )
                 }

@@ -140,15 +140,40 @@ object ShizukuManager {
         }
     }
 
+    private val failureRegex = Regex("^(Failure|Failed|\\[Error\\]|Error:|Exception)", RegexOption.IGNORE_CASE)
+
     /** Execute an argv command through the privileged service. */
     suspend fun exec(vararg command: String): ShellResult {
         val svc = service() ?: return ShellResult(false, "", "Shizuku not ready")
         return try {
-            val out = svc.execute(command)
-            ShellResult(success = !out.startsWith("ERROR:"), output = out, error = null)
+            parseResult(svc.execute(command))
         } catch (t: Throwable) {
             ShellResult(false, "", t.message)
         }
+    }
+
+    /** Strip the trailing exit-code marker and decide success from the exit code + output. */
+    private fun parseResult(raw: String): ShellResult {
+        val marker = ShellUserService.EXIT_MARKER
+        val idx = raw.lastIndexOf(marker)
+        val out: String
+        val code: Int?
+        if (idx >= 0) {
+            out = raw.substring(0, idx).trim()
+            code = raw.substring(idx + marker.length).trim().toIntOrNull()
+        } else {
+            out = raw.trim()
+            code = null
+        }
+        val firstLine = out.lineSequence().firstOrNull()?.trim().orEmpty()
+        val failed = out.startsWith("ERROR:") ||
+            (code != null && code != 0) ||
+            failureRegex.containsMatchIn(firstLine)
+        return ShellResult(
+            success = !failed,
+            output = out,
+            error = if (failed) out.ifBlank { "exit ${code ?: "?"}" } else null,
+        )
     }
 
     /** Convenience for `cmd`/`pm`/`am`/`settings`/`dumpsys` etc. expressed as one line. */

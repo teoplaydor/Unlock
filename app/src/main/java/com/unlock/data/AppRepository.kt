@@ -59,6 +59,7 @@ class AppRepository(private val context: Context) {
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
         )
+        val dynamicProtected = SafetyCatalog.dynamicProtected(context)
         val out = mutableListOf<BootEntry>()
         for (action in actions) {
             @Suppress("DEPRECATION")
@@ -72,6 +73,7 @@ class AppRepository(private val context: Context) {
                     receiverClass = act.name,
                     action = action,
                     isEnabledComponent = act.isEnabled,
+                    isProtected = SafetyCatalog.classify(act.packageName, dynamicProtected) == SafetyTier.PROTECTED,
                 )
             }
         }
