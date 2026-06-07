@@ -57,11 +57,16 @@ class AppActions(private val context: Context) {
      * force-stop is the one-shot part. Undo lifts the background restriction.
      */
     suspend fun sleep(pkg: String): ShellResult =
-        recorded(pkg, "Sleep", listOf("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "allow")) {
-            val stop = forceStopRaw(pkg)
+        recorded(
+            pkg,
+            "Sleep",
+            // Faithful inverse: return the appop to system-managed (default) AND lift the bucket.
+            listOf("sh", "-c", "cmd appops set $pkg RUN_ANY_IN_BACKGROUND default; am set-standby-bucket $pkg active"),
+        ) {
+            forceStopRaw(pkg)
             ShizukuManager.exec("am", "set-standby-bucket", pkg, "restricted")
+            // Last expression = the appop mutation the undo reverses; recorded() logs iff it succeeds.
             ShizukuManager.exec("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "ignore")
-            stop
         }
 
     private suspend fun forceStopRaw(pkg: String): ShellResult =

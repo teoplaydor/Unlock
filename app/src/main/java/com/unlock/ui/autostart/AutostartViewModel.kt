@@ -42,6 +42,12 @@ class AutostartViewModel : ViewModel() {
 
     fun toggleComponent(entry: BootEntry) {
         viewModelScope.launch {
+            // Disabling a protected core package's boot receiver can brick the device or kill
+            // emergency alerts. Re-enabling (turning back on) is always safe.
+            if (entry.isEnabledComponent && entry.isProtected) {
+                _state.update { it.copy(message = "Blocked — ${entry.packageName} is a protected core package.") }
+                return@launch
+            }
             if (!ShizukuManager.isReady) {
                 _state.update { it.copy(message = "Disabling autostart needs Shizuku.") }
                 return@launch

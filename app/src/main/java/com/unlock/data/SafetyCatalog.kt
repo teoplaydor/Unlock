@@ -101,15 +101,22 @@ object SafetyCatalog {
         else -> SafetyTier.NORMAL
     }
 
-    /** Packages we must protect because they are this phone's active launcher / IME / dialer. */
+    /** Packages we must protect because they are a launcher / the active IME / Shizuku's host. */
     fun dynamicProtected(context: Context): Set<String> {
-        val out = mutableSetOf("com.android.shell", context.packageName)
-        // Default launcher
+        val out = mutableSetOf("com.android.shell", context.packageName, "com.sec.android.app.launcher")
+        val pm = context.packageManager
+        // Protect EVERY installed launcher — resolveActivity can return the system resolver
+        // (pkg "android") rather than the real home app, leaving the actual launcher unprotected.
         runCatching {
             val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-            context.packageManager.resolveActivity(home, 0)?.activityInfo?.packageName?.let(out::add)
+            @Suppress("DEPRECATION")
+            pm.queryIntentActivities(home, 0).forEach { ri ->
+                ri.activityInfo?.packageName
+                    ?.takeIf { it != "android" && !it.startsWith("com.android.internal") }
+                    ?.let(out::add)
+            }
         }
-        // Default IME
+        // Active IME
         runCatching {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
                 ?.substringBefore('/')?.takeIf { it.isNotBlank() }?.let(out::add)

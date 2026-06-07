@@ -117,7 +117,8 @@ class AppsViewModel : ViewModel() {
     fun clearData(pkg: String) = run("Data cleared", pkg, guard = true) { actions.clearData(pkg) }
 
     private fun isProtected(pkg: String): Boolean =
-        _state.value.apps.firstOrNull { it.packageName == pkg }?.isProtected == true
+        _state.value.apps.firstOrNull { it.packageName == pkg }?.isProtected
+            ?: ServiceLocator.isProtected(pkg)
 
     private fun run(okVerb: String, pkg: String, guard: Boolean = false, block: suspend () -> ShellResult) {
         viewModelScope.launch {

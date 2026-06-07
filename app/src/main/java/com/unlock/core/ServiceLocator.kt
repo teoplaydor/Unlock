@@ -5,6 +5,8 @@ import com.unlock.data.AppActions
 import com.unlock.data.AppRepository
 import com.unlock.data.BatteryForensicsRepository
 import com.unlock.data.RunningRepository
+import com.unlock.data.SafetyCatalog
+import com.unlock.data.SafetyTier
 import com.unlock.data.Samsung
 import com.unlock.data.UsageRepository
 import com.unlock.diagnostics.DiagnosticsEngine
@@ -28,4 +30,8 @@ object ServiceLocator {
     fun hasUsageAccess(): Boolean = Permissions.hasUsageAccess(appContext)
 
     fun samsungGosPackage(): String? = Samsung.activeGosPackage(appContext)
+
+    /** Authoritative protection check, independent of any loaded list. */
+    fun isProtected(pkg: String): Boolean =
+        SafetyCatalog.classify(pkg, SafetyCatalog.dynamicProtected(appContext)) == SafetyTier.PROTECTED
 }
