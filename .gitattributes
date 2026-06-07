@@ -1,0 +1,7 @@
+# Normalize line endings: keep LF in the repo so Linux CI runners and YAML stay clean.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.jks binary
+*.keystore binary

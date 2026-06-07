@@ -1,0 +1,16 @@
+<resources>
+    <!-- Post-splash theme: Compose owns the real styling; this is just the window shell. -->
+    <style name="Theme.Unlock" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+    <!-- Launch theme using the AndroidX SplashScreen API. -->
+    <style name="Theme.Unlock.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Unlock</item>
+    </style>
+</resources>
