@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,10 +19,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
+import com.unlock.data.DrainEntry
 import com.unlock.diagnostics.CpuCore
 import com.unlock.diagnostics.DiagnosticsReport
 import com.unlock.ui.components.SeverityDot
@@ -39,9 +42,32 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel = viewModel()) {
             TextButton(onClick = vm::refresh) { Text(if (state.loading) "…" else "Refresh") }
         }
 
+        state.message?.let { msg ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(msg, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    TextButton(onClick = vm::clearMessage) { Text("OK") }
+                }
+            }
+        }
+
+        state.gosPackage?.let { gos ->
+            SectionCard("Samsung performance throttling") {
+                Text(
+                    "Game Optimizing Service ($gos) is active — it caps performance for thousands of apps by name. Disabling it removes that cap (reversible).",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.padding(4.dp))
+                FilledTonalButton(onClick = vm::disableGos, enabled = state.shizukuReady) {
+                    Text(if (state.shizukuReady) "Disable GOS throttling" else "Needs Shizuku")
+                }
+            }
+        }
+
         val report = state.report ?: return@Column
 
         FindingsSection(report)
+        if (state.shizukuReady && state.drainers.isNotEmpty()) DrainSection(state.drainers)
         report.battery?.let { BatterySection(it) }
         ThermalSection(report)
         CpuSection(report)
@@ -88,6 +114,24 @@ private fun BatterySection(b: com.unlock.diagnostics.BatterySnapshot) {
         if (b.powerWatts != 0f) KeyVal("Power", String.format(java.util.Locale.US, "%.2f W", kotlin.math.abs(b.powerWatts)))
         if (b.chargeCounterMicroAh != Int.MIN_VALUE) KeyVal("Charge counter", "${b.chargeCounterMicroAh / 1000} mAh")
         b.technology?.let { KeyVal("Technology", it) }
+    }
+}
+
+@Composable
+private fun DrainSection(drainers: List<DrainEntry>) {
+    SectionCard("Top battery drain (estimated, ${drainers.size})") {
+        drainers.forEach { d ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                Text(
+                    d.label,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(String.format(java.util.Locale.US, "%.1f mAh", d.mAh), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }
 

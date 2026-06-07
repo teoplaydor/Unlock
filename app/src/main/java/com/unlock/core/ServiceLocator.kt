@@ -3,7 +3,9 @@ package com.unlock.core
 import android.content.Context
 import com.unlock.data.AppActions
 import com.unlock.data.AppRepository
+import com.unlock.data.BatteryForensicsRepository
 import com.unlock.data.RunningRepository
+import com.unlock.data.Samsung
 import com.unlock.data.UsageRepository
 import com.unlock.diagnostics.DiagnosticsEngine
 
@@ -21,6 +23,9 @@ object ServiceLocator {
     val runningRepository: RunningRepository by lazy { RunningRepository(usageRepository) }
     val appActions: AppActions by lazy { AppActions(appContext) }
     val diagnostics: DiagnosticsEngine by lazy { DiagnosticsEngine(appContext) }
+    val batteryForensics: BatteryForensicsRepository by lazy { BatteryForensicsRepository(appContext) }
 
     fun hasUsageAccess(): Boolean = Permissions.hasUsageAccess(appContext)
+
+    fun samsungGosPackage(): String? = Samsung.activeGosPackage(appContext)
 }
