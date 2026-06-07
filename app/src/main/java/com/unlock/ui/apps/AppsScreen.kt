@@ -144,7 +144,7 @@ private fun FilterRow(
             FilterChip(
                 selected = filter == f,
                 onClick = { onFilter(f) },
-                label = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                label = { Text(f.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }) },
             )
         }
         Spacer(Modifier.width(4.dp))
