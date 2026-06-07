@@ -7,68 +7,92 @@ import com.unlock.shizuku.ShellResult
 import com.unlock.shizuku.ShizukuManager
 
 /**
- * All package-altering actions. The privileged ones route through [ShizukuManager]
- * and run as the shell user (uid 2000) — no root. Each maps to the exact command a
- * power user would type over ADB, so behaviour is predictable and reversible where noted.
+ * All package-altering actions. The privileged ones route through [ShizukuManager] and run as
+ * the shell user (uid 2000) — no root. Each maps to the exact command a power user would type
+ * over ADB, and every successful mutation is written to [ActionLog] with an inverse command
+ * where one exists, so the user can undo it.
  */
 class AppActions(private val context: Context) {
 
-    /** Remove for the current user only. Reversible with [reinstallExisting]; full data kept with -k. */
-    suspend fun uninstallUser0(pkg: String, keepData: Boolean = false): ShellResult =
-        if (keepData) ShizukuManager.exec("pm", "uninstall", "-k", "--user", "0", pkg)
-        else ShizukuManager.exec("pm", "uninstall", "--user", "0", pkg)
+    private suspend fun recorded(
+        pkg: String,
+        action: String,
+        undo: List<String>?,
+        block: suspend () -> ShellResult,
+    ): ShellResult {
+        val r = block()
+        if (r.success) ActionLog.record(pkg, action, undo)
+        return r
+    }
+
+    /** Remove for the current user only. Reversible with install-existing; keeps data with -k. */
+    suspend fun uninstallUser0(pkg: String, keepData: Boolean = true): ShellResult =
+        recorded(pkg, "Uninstall (user 0)", listOf("cmd", "package", "install-existing", pkg)) {
+            if (keepData) ShizukuManager.exec("pm", "uninstall", "-k", "--user", "0", pkg)
+            else ShizukuManager.exec("pm", "uninstall", "--user", "0", pkg)
+        }
 
     /** Restore an app previously removed with `--user 0` (it stays on the system image). */
     suspend fun reinstallExisting(pkg: String): ShellResult =
-        ShizukuManager.exec("cmd", "package", "install-existing", pkg)
+        recorded(pkg, "Restore", null) {
+            ShizukuManager.exec("cmd", "package", "install-existing", pkg)
+        }
 
     /** Fully reversible freeze: the app disappears and cannot run until re-enabled. */
     suspend fun disable(pkg: String): ShellResult =
-        ShizukuManager.exec("pm", "disable-user", "--user", "0", pkg)
+        recorded(pkg, "Disable", listOf("pm", "enable", pkg)) {
+            ShizukuManager.exec("pm", "disable-user", "--user", "0", pkg)
+        }
 
     suspend fun enable(pkg: String): ShellResult =
-        ShizukuManager.exec("pm", "enable", pkg)
+        recorded(pkg, "Enable", null) { ShizukuManager.exec("pm", "enable", pkg) }
 
-    /** Kill the app and all its processes right now. */
+    /** Kill the app and all its processes right now (transient, no undo). */
     suspend fun forceStop(pkg: String): ShellResult =
-        ShizukuManager.exec("am", "force-stop", pkg)
+        recorded(pkg, "Force-stop", null) { ShizukuManager.exec("am", "force-stop", pkg) }
 
     /**
-     * "Sleep": stop it now, pin it to the RESTRICTED standby bucket, and revoke its ability to
-     * run freely in the background. This is the closest no-root equivalent of Samsung's
-     * "deep sleep". Note RESTRICTED only throttles and self-reverses on user interaction, so the
-     * force-stop is the one-shot part — re-apply if the app wakes again.
+     * "Sleep": stop it now, pin it to RESTRICTED standby, and revoke free background running.
+     * Closest no-root equivalent of Samsung "deep sleep". RESTRICTED self-reverses on use, so the
+     * force-stop is the one-shot part. Undo lifts the background restriction.
      */
-    suspend fun sleep(pkg: String): ShellResult {
-        val stop = forceStop(pkg)
-        ShizukuManager.exec("am", "set-standby-bucket", pkg, "restricted")
-        ShizukuManager.exec("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "ignore")
-        return stop
-    }
+    suspend fun sleep(pkg: String): ShellResult =
+        recorded(pkg, "Sleep", listOf("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "allow")) {
+            val stop = forceStopRaw(pkg)
+            ShizukuManager.exec("am", "set-standby-bucket", pkg, "restricted")
+            ShizukuManager.exec("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "ignore")
+            stop
+        }
 
-    /** Greys the icon out so it can't be launched until unsuspended (reversible, survives nothing destructive). */
+    private suspend fun forceStopRaw(pkg: String): ShellResult =
+        ShizukuManager.exec("am", "force-stop", pkg)
+
+    /** Greys the icon out so it can't be launched until unsuspended (reversible). */
     suspend fun suspend(pkg: String): ShellResult =
-        ShizukuManager.exec("pm", "suspend", "--user", "0", pkg)
+        recorded(pkg, "Suspend", listOf("pm", "unsuspend", "--user", "0", pkg)) {
+            ShizukuManager.exec("pm", "suspend", "--user", "0", pkg)
+        }
 
     suspend fun unsuspend(pkg: String): ShellResult =
-        ShizukuManager.exec("pm", "unsuspend", "--user", "0", pkg)
+        recorded(pkg, "Unsuspend", null) { ShizukuManager.exec("pm", "unsuspend", "--user", "0", pkg) }
 
     suspend fun setStandbyBucket(pkg: String, bucket: String): ShellResult =
         ShizukuManager.exec("am", "set-standby-bucket", pkg, bucket)
 
     suspend fun getStandbyBucket(pkg: String): Int =
-        ShizukuManager.exec("am", "get-standby-bucket", pkg)
-            .output.trim().toIntOrNull() ?: -1
+        ShizukuManager.exec("am", "get-standby-bucket", pkg).output.trim().toIntOrNull() ?: -1
 
     /** Disable a single autostart receiver component without touching the rest of the app. */
     suspend fun disableComponent(pkg: String, component: String): ShellResult =
-        ShizukuManager.exec("pm", "disable", "$pkg/$component")
+        recorded(pkg, "Disable autostart", listOf("pm", "enable", "$pkg/$component")) {
+            ShizukuManager.exec("pm", "disable", "$pkg/$component")
+        }
 
     suspend fun enableComponent(pkg: String, component: String): ShellResult =
-        ShizukuManager.exec("pm", "enable", "$pkg/$component")
+        recorded(pkg, "Enable autostart", null) { ShizukuManager.exec("pm", "enable", "$pkg/$component") }
 
     suspend fun clearData(pkg: String): ShellResult =
-        ShizukuManager.exec("pm", "clear", pkg)
+        recorded(pkg, "Clear data", null) { ShizukuManager.exec("pm", "clear", pkg) }
 
     /** Self-grant the powerful perms we declared, once Shizuku is available. */
     suspend fun grantSelfPrivileges(): List<ShellResult> {

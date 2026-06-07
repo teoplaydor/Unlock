@@ -13,19 +13,24 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.unlock.core.Format
 import com.unlock.core.Permissions
 import com.unlock.core.ServiceLocator
+import com.unlock.data.ActionLog
 import com.unlock.shizuku.ShizukuManager
 import kotlinx.coroutines.launch
 
@@ -101,6 +106,59 @@ fun SettingsScreen() {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { context.startActivity(Permissions.usageAccessSettingsIntent()) }) { Text("Open settings") }
                     OutlinedButton(onClick = { usage = Permissions.hasUsageAccess(context) }) { Text("Re-check") }
+                }
+            }
+        }
+
+        // ---- Action history + undo ----
+        val actions by ActionLog.records.collectAsStateWithLifecycle()
+        if (actions.isNotEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Recent actions",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { ActionLog.clear() }) { Text("Clear") }
+                    }
+                    actions.asReversed().take(12).forEach { rec ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "${rec.action} · ${rec.pkg}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    Format.timeAgo(rec.time),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                )
+                            }
+                            if (rec.reversible) {
+                                TextButton(
+                                    enabled = shizuku == ShizukuManager.State.READY,
+                                    onClick = {
+                                        scope.launch {
+                                            val r = ActionLog.undo(rec)
+                                            message = when {
+                                                r == null -> "Not reversible"
+                                                r.success -> "Undone: ${rec.action}"
+                                                else -> "Failed: ${r.text.take(80)}"
+                                            }
+                                        }
+                                    },
+                                ) { Text("Undo") }
+                            }
+                        }
+                    }
                 }
             }
         }
