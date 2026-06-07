@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,6 +21,27 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        create("release") {
+            // Prefer CI env (decoded from secrets); else a local keystore.properties; else leave
+            // empty and fall back to the debug key below so release builds stay installable.
+            val envStore = System.getenv("KEYSTORE_FILE")
+            val propsFile = rootProject.file("keystore.properties")
+            if (!envStore.isNullOrBlank() && file(envStore).exists()) {
+                storeFile = file(envStore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            } else if (propsFile.exists()) {
+                val p = Properties().apply { FileInputStream(propsFile).use { load(it) } }
+                storeFile = file(p.getProperty("storeFile"))
+                storePassword = p.getProperty("storePassword")
+                keyAlias = p.getProperty("keyAlias")
+                keyPassword = p.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -30,8 +54,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // CI signs with a keystore from secrets; unsigned otherwise.
-            signingConfig = signingConfigs.findByName("release")
+            // Use the release key when provided, otherwise the debug key so the APK is
+            // always installable (never an unsigned, un-installable artifact).
+            signingConfig = if (signingConfigs.getByName("release").storeFile != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
