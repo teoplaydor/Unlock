@@ -2,7 +2,6 @@ package com.unlock.data
 
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -25,9 +24,7 @@ class UsageRepository(private val context: Context) {
                 UsageEntry(
                     lastUsed = s.lastTimeUsed,
                     totalForegroundMs = s.totalTimeInForeground,
-                    launchCount = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        runCatching { s.appLaunchCount }.getOrDefault(0)
-                    } else 0,
+                    launchCount = 0, // UsageStats exposes no public launch-count
                 )
             }
         }.getOrDefault(emptyMap())
