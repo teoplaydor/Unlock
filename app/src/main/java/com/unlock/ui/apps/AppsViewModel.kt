@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unlock.core.ServiceLocator
 import com.unlock.data.AppInfo
+import com.unlock.data.SafetyTier
 import com.unlock.shizuku.ShellResult
 import com.unlock.shizuku.ShizukuManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class AppsViewModel : ViewModel() {
 
-    enum class Filter { ALL, USER, SYSTEM, DISABLED, AUTOSTART }
+    enum class Filter { ALL, USER, SYSTEM, DISABLED, AUTOSTART, SAFE_DEBLOAT }
     enum class Sort { NAME, SIZE, LAST_USED, INSTALL_DATE }
 
     data class UiState(
@@ -37,6 +38,7 @@ class AppsViewModel : ViewModel() {
                         Filter.SYSTEM -> app.isSystem
                         Filter.DISABLED -> !app.isEnabled
                         Filter.AUTOSTART -> app.hasBootReceiver
+                        Filter.SAFE_DEBLOAT -> app.safetyTier == SafetyTier.DEBLOAT_SAFE
                     }
                 }
                 .filter { app ->
