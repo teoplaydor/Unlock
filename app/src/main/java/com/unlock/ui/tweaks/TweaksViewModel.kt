@@ -46,13 +46,19 @@ class TweaksViewModel : ViewModel() {
 
     fun refresh() {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true) }
             val applicable = TweaksCatalog.all.filter { DeviceInfo.applies(it.oem) }
-            val rows = applicable.map { t ->
-                val on = if (t.kind == TweakKind.TOGGLE && ShizukuManager.isReady) repo.isOn(t) else null
-                Row(t, on)
+            // Show the whole list instantly; toggle states hydrate in the background so a
+            // device with 100+ tweaks doesn't block on sequential `settings get` reads.
+            _state.update { st ->
+                val prev = st.rows.associateBy { it.tweak.id }
+                st.copy(loading = false, rows = applicable.map { Row(it, prev[it.id]?.isOn) })
             }
-            _state.update { it.copy(loading = false, rows = rows) }
+            if (ShizukuManager.isReady) {
+                applicable.filter { it.kind == TweakKind.TOGGLE && it.readCmd != null }.forEach { t ->
+                    val on = repo.isOn(t)
+                    _state.update { st -> st.copy(rows = st.rows.map { if (it.tweak.id == t.id) it.copy(isOn = on) else it }) }
+                }
+            }
         }
     }
 
