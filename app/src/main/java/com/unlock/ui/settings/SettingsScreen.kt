@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,17 +30,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unlock.core.Format
+import com.unlock.core.LocalStrings
 import com.unlock.core.Permissions
+import com.unlock.core.Prefs
 import com.unlock.core.ServiceLocator
 import com.unlock.data.ActionLog
 import com.unlock.shizuku.ShizukuManager
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
+    val s = LocalStrings.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val shizuku by ShizukuManager.state.collectAsStateWithLifecycle()
+    val lang by Prefs.language.collectAsStateWithLifecycle()
     var usage by remember { mutableStateOf(Permissions.hasUsageAccess(context)) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -46,16 +53,29 @@ fun SettingsScreen() {
         modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // ---- Language ----
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(s.sLanguage, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.padding(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = lang == "en", onClick = { Prefs.setLanguage("en") }, label = { Text("English") })
+                    FilterChip(selected = lang == "ru", onClick = { Prefs.setLanguage("ru") }, label = { Text("Русский") })
+                }
+            }
+        }
+
         // ---- Shizuku ----
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Shizuku — full power without root", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(s.sShizukuTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.padding(2.dp))
                 Text(
                     when (shizuku) {
-                        ShizukuManager.State.READY -> "Connected ✓  (running as ${if (ShizukuManager.isRoot()) "root" else "shell"})"
-                        ShizukuManager.State.NEEDS_PERMISSION -> "Shizuku is running — permission needed."
-                        ShizukuManager.State.NOT_RUNNING -> "Not connected."
+                        ShizukuManager.State.READY ->
+                            String.format(s.sShizukuConnectedFmt, if (ShizukuManager.isRoot()) "root" else "shell")
+                        ShizukuManager.State.NEEDS_PERMISSION -> s.sShizukuNeedsPerm
+                        ShizukuManager.State.NOT_RUNNING -> s.sShizukuNotConnected
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
@@ -63,7 +83,7 @@ fun SettingsScreen() {
                 Spacer(Modifier.padding(4.dp))
                 when (shizuku) {
                     ShizukuManager.State.NEEDS_PERMISSION ->
-                        Button(onClick = { ShizukuManager.requestPermission() }) { Text("Grant permission") }
+                        Button(onClick = { ShizukuManager.requestPermission() }) { Text(s.sGrantPermission) }
                     ShizukuManager.State.READY ->
                         Button(onClick = {
                             scope.launch {
@@ -71,22 +91,14 @@ fun SettingsScreen() {
                                 message = "Self-grant: ${r.count { it.success }}/${r.size} ok"
                                 usage = Permissions.hasUsageAccess(context)
                             }
-                        }) { Text("Grant Unlock extra privileges") }
+                        }) { Text(s.sGrantExtra) }
                     ShizukuManager.State.NOT_RUNNING -> {
-                        Text(
-                            "How to start Shizuku (one-time, no root):\n" +
-                                "1. Install Shizuku from GitHub / Play.\n" +
-                                "2. Enable Developer options → Wireless debugging (Android 11+).\n" +
-                                "3. In Shizuku, tap “Start” (pairing) — or start it from a PC with:\n" +
-                                "     adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh\n" +
-                                "4. Come back here and grant permission.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Text(s.sShizukuHowto, style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.padding(4.dp))
                         OutlinedButton(onClick = {
                             val launch = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
-                            if (launch != null) context.startActivity(launch) else message = "Shizuku app not installed."
-                        }) { Text("Open Shizuku") }
+                            if (launch != null) context.startActivity(launch) else message = "Shizuku not installed."
+                        }) { Text(s.sOpenShizuku) }
                     }
                 }
             }
@@ -95,17 +107,16 @@ fun SettingsScreen() {
         // ---- Usage access ----
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Usage access", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(s.sUsageTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    if (usage) "Granted ✓ — sizes, battery blame and last-used are available."
-                    else "Not granted — needed for app sizes and usage stats.",
+                    if (usage) s.sUsageGranted else s.sUsageNotGranted,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 )
                 Spacer(Modifier.padding(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { context.startActivity(Permissions.usageAccessSettingsIntent()) }) { Text("Open settings") }
-                    OutlinedButton(onClick = { usage = Permissions.hasUsageAccess(context) }) { Text("Re-check") }
+                    Button(onClick = { context.startActivity(Permissions.usageAccessSettingsIntent()) }) { Text(s.sOpenSettings) }
+                    OutlinedButton(onClick = { usage = Permissions.hasUsageAccess(context) }) { Text(s.sRecheck) }
                 }
             }
         }
@@ -117,12 +128,12 @@ fun SettingsScreen() {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Recent actions",
+                            s.sRecentActions,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f),
                         )
-                        TextButton(onClick = { ActionLog.clear() }) { Text("Clear") }
+                        TextButton(onClick = { ActionLog.clear() }) { Text(s.sClear) }
                     }
                     actions.asReversed().take(12).forEach { rec ->
                         Row(
@@ -155,7 +166,7 @@ fun SettingsScreen() {
                                             }
                                         }
                                     },
-                                ) { Text("Undo") }
+                                ) { Text(s.sUndo) }
                             }
                         }
                     }
@@ -163,18 +174,11 @@ fun SettingsScreen() {
             }
         }
 
-        // ---- About / safety ----
+        // ---- Safety ----
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Safety", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(
-                    "• `Uninstall` removes apps for the current user only (--user 0). Most are restorable with " +
-                        "“Restore”, and a factory reset brings system apps back.\n" +
-                        "• `Disable` is fully reversible.\n" +
-                        "• Don't remove core packages (SystemUI, phone, providers) — it can cause a bootloop.\n" +
-                        "• Unlock never requires root and sends nothing off-device.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Text(s.sSafety, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(s.sSafetyBody, style = MaterialTheme.typography.bodySmall)
             }
         }
 
