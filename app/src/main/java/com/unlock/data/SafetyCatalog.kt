@@ -55,10 +55,33 @@ object SafetyCatalog {
         "com.samsung.android.app.telephonyui",
     )
 
-    /** Allowed but warned. GMS only matters when Play is present, so warn rather than block. */
+    /** Allowed but warned — disabling breaks an optional feature or is a personal-preference app. */
     private val cautionExact = setOf(
-        "com.google.android.gms",
-        "com.android.vending",
+        // Google — removing breaks something some users rely on
+        "com.google.android.gms",                 // Play services (push/location) — only safe de-Googled
+        "com.android.vending",                    // Play Store
+        "com.google.android.webview",             // WebView — many apps render web content with it
+        "com.google.android.googlequicksearchbox", // Google app / Assistant
+        "com.google.android.apps.maps",
+        "com.google.android.youtube",
+        "com.google.android.gm",                  // Gmail
+        "com.google.android.apps.photos",
+        "com.google.android.calendar",
+        "com.google.android.contacts",
+        "com.google.android.tts",                 // speech — needed by accessibility/navigation
+        "com.android.bips",                       // default print service
+        "com.android.stk",                        // SIM toolkit (some carriers use it)
+        "com.android.wallpaper.livepicker",
+        // Samsung — optional but some depend on it
+        "com.samsung.android.app.notes",          // Samsung Notes
+        "com.samsung.android.mobileservice",      // Samsung account social features
+        "com.samsung.android.app.aodservice",     // Always On Display
+        "com.samsung.android.mdx",                // Link to Windows
+        "com.samsung.android.smartmirroring",     // Smart View / screen mirroring
+        "com.sec.android.app.shealth",            // Samsung Health
+        "com.samsung.android.app.sharelive",      // Quick Share
+        "com.samsung.android.scs",                // Samsung Capture/Smart suggestions
+        "com.samsung.android.bixby.service",
     )
 
     /** Curated safe-to-disable / debloat (reversible-first). stickerprovider intentionally excluded. */
@@ -90,6 +113,42 @@ object SafetyCatalog {
         "com.microsoft.skydrive",
         "com.microsoft.office.officehubrow",
         "com.netflix.partner.activation",
+        // Google — safe-to-disable extras (Recommended/Advanced in UAD)
+        "com.google.android.apps.tachyon",          // Meet (formerly Duo)
+        "com.google.android.feedback",
+        "com.google.android.printservice.recommendation",
+        "com.google.android.projection.gearhead",   // Android Auto
+        "com.google.ar.core",
+        "com.google.ar.lens",
+        "com.google.android.apps.wellbeing",        // Digital Wellbeing
+        "com.google.android.apps.youtube.music",
+        "com.google.android.videos",                // Google TV / Play Movies
+        "com.google.android.play.games",
+        "com.google.android.apps.subscriptions.red", // Google One
+        "com.google.android.apps.docs",             // Drive
+        "com.google.android.apps.googleassistant",
+        // Samsung — more debloat-safe
+        "com.samsung.android.visionintelligence",   // Bixby Vision
+        "com.samsung.android.arzone",
+        "com.samsung.android.app.dressroom",        // wallpaper service
+        "com.samsung.android.beaconmanager",
+        "com.samsung.android.app.tips",
+        "com.samsung.android.rubin.app",            // customization/telemetry service
+        "com.samsung.android.smartswitchassistant",
+        "com.samsung.android.shortcutbackupservice",
+        "com.sec.android.app.chromecustomizations",
+        "com.samsung.android.service.peoplestripe",
+        "com.samsung.android.app.updatecenter",
+        "com.samsung.android.bixby.wakeup",
+        // Carrier / 3rd-party preload stubs
+        "com.spotify.music",
+        "com.linkedin.android",
+        "com.amazon.appmanager",
+        "com.amazon.mShop.android.shopping",
+        "com.android.egg",
+        "com.android.bookmarkprovider",
+        "com.android.dreams.basic",
+        "com.android.dreams.phototable",
     )
 
     fun classify(pkg: String, dynamicProtected: Set<String>): SafetyTier = when {
