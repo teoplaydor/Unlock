@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import java.io.File
 
 /** Reads battery + power telemetry from BatteryManager and the sticky battery intent. */
 class BatteryMonitor(private val context: Context) {
@@ -32,7 +33,31 @@ class BatteryMonitor(private val context: Context) {
             chargeCounterMicroAh = safeIntProp(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER),
             energyCounterNwh = runCatching { bm.getLongProperty(BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER) }
                 .getOrDefault(Long.MIN_VALUE),
+            chargeFullUah = readSysfsInt(
+                "/sys/class/power_supply/battery/charge_full",
+                "/sys/class/power_supply/bms/charge_full",
+            ),
+            chargeFullDesignUah = readSysfsInt(
+                "/sys/class/power_supply/battery/charge_full_design",
+                "/sys/class/power_supply/bms/charge_full_design",
+            ),
+            cycleCount = readSysfsInt(
+                "/sys/class/power_supply/battery/cycle_count",
+                "/sys/class/power_supply/bms/cycle_count",
+            ),
         )
+    }
+
+    /** Best-effort read of an integer sysfs node; many power_supply nodes are world-readable. */
+    private fun readSysfsInt(vararg paths: String): Int {
+        for (p in paths) {
+            val v = runCatching {
+                val f = File(p)
+                if (f.canRead()) f.readText().trim().toIntOrNull() else null
+            }.getOrNull()
+            if (v != null) return v
+        }
+        return -1
     }
 
     private fun safeIntProp(prop: Int): Int =

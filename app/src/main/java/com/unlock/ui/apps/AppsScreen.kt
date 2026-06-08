@@ -106,6 +106,7 @@ fun AppsScreen(vm: AppsViewModel = viewModel()) {
                         app = app,
                         selected = app.packageName in state.selected,
                         selectionMode = state.selected.isNotEmpty(),
+                        busy = app.packageName in state.busy,
                         onClick = {
                             if (state.selected.isNotEmpty()) vm.toggleSelect(app.packageName)
                             else sheetApp = app
@@ -196,6 +197,7 @@ private fun AppRow(
     app: AppInfo,
     selected: Boolean,
     selectionMode: Boolean,
+    busy: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -236,8 +238,9 @@ private fun AppRow(
                 if (app.lastUsed > 0) TagChip("used ${Format.timeAgo(app.lastUsed)}", MaterialTheme.colorScheme.secondary)
             }
         }
-        if (selectionMode) {
-            androidx.compose.material3.Checkbox(checked = selected, onCheckedChange = { onClick() })
+        when {
+            busy -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            selectionMode -> androidx.compose.material3.Checkbox(checked = selected, onCheckedChange = { onClick() })
         }
     }
 }

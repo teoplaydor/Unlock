@@ -25,6 +25,7 @@ class AppsViewModel : ViewModel() {
         val filter: Filter = Filter.ALL,
         val sort: Sort = Sort.NAME,
         val selected: Set<String> = emptySet(),
+        val busy: Set<String> = emptySet(),
         val shizukuReady: Boolean = false,
         val hasUsageAccess: Boolean = false,
         val message: String? = null,
@@ -108,10 +109,14 @@ class AppsViewModel : ViewModel() {
 
     // ---- privileged single-package actions (route through Shizuku) ----
 
-    fun uninstall(pkg: String, keepData: Boolean = true) = run("Uninstalled", pkg, guard = true) { actions.uninstallUser0(pkg, keepData) }
-    fun reinstall(pkg: String) = run("Restored", pkg) { actions.reinstallExisting(pkg) }
-    fun disable(pkg: String) = run("Disabled", pkg, guard = true) { actions.disable(pkg) }
-    fun enable(pkg: String) = run("Enabled", pkg) { actions.enable(pkg) }
+    fun uninstall(pkg: String, keepData: Boolean = true) =
+        run("Uninstalled", pkg, guard = true, transform = { null }) { actions.uninstallUser0(pkg, keepData) }
+    fun reinstall(pkg: String) =
+        run("Restored", pkg, transform = { it.copy(isEnabled = true) }) { actions.reinstallExisting(pkg) }
+    fun disable(pkg: String) =
+        run("Disabled", pkg, guard = true, transform = { it.copy(isEnabled = false) }) { actions.disable(pkg) }
+    fun enable(pkg: String) =
+        run("Enabled", pkg, transform = { it.copy(isEnabled = true) }) { actions.enable(pkg) }
     fun forceStop(pkg: String) = run("Force-stopped", pkg) { actions.forceStop(pkg) }
     fun sleep(pkg: String) = run("Put to sleep", pkg, guard = true) { actions.sleep(pkg) }
     fun clearData(pkg: String) = run("Data cleared", pkg, guard = true) { actions.clearData(pkg) }
@@ -120,7 +125,22 @@ class AppsViewModel : ViewModel() {
         _state.value.apps.firstOrNull { it.packageName == pkg }?.isProtected
             ?: ServiceLocator.isProtected(pkg)
 
-    private fun run(okVerb: String, pkg: String, guard: Boolean = false, block: suspend () -> ShellResult) {
+    private fun setBusy(pkg: String, busy: Boolean) = _state.update {
+        it.copy(busy = if (busy) it.busy + pkg else it.busy - pkg)
+    }
+
+    /**
+     * Runs a privileged action and updates ONLY the affected row in place (via [transform])
+     * instead of reloading the whole list — the list never blanks and scroll is preserved.
+     * transform returns the updated AppInfo, or null to remove the row (uninstall).
+     */
+    private fun run(
+        okVerb: String,
+        pkg: String,
+        guard: Boolean = false,
+        transform: ((AppInfo) -> AppInfo?)? = null,
+        block: suspend () -> ShellResult,
+    ) {
         viewModelScope.launch {
             if (guard && isProtected(pkg)) {
                 _state.update { it.copy(message = "Blocked — $pkg is a protected core package (would risk a bootloop).") }
@@ -130,9 +150,16 @@ class AppsViewModel : ViewModel() {
                 _state.update { it.copy(message = "Enable Shizuku in Settings to do that without root.") }
                 return@launch
             }
+            setBusy(pkg, true)
             val r = block()
+            val tf = transform
+            if (r.success && tf != null) {
+                _state.update { st ->
+                    st.copy(apps = st.apps.mapNotNull { if (it.packageName == pkg) tf(it) else it })
+                }
+            }
+            setBusy(pkg, false)
             _state.update { it.copy(message = if (r.success) "$okVerb." else "Failed: ${r.text.take(160)}") }
-            load()
         }
     }
 
@@ -148,6 +175,7 @@ class AppsViewModel : ViewModel() {
                 _state.update { it.copy(message = "Batch actions need Shizuku (no root).") }
                 return@launch
             }
+            _state.update { it.copy(busy = it.busy + targets) }
             var ok = 0
             for (pkg in targets) {
                 val r = when (action) {
@@ -156,11 +184,24 @@ class AppsViewModel : ViewModel() {
                     Batch.FORCE_STOP -> actions.forceStop(pkg)
                     Batch.SLEEP -> actions.sleep(pkg)
                 }
-                if (r.success) ok++
+                if (r.success) {
+                    ok++
+                    _state.update { st ->
+                        st.copy(apps = st.apps.mapNotNull { app ->
+                            if (app.packageName != pkg) app
+                            else when (action) {
+                                Batch.UNINSTALL -> null
+                                Batch.DISABLE -> app.copy(isEnabled = false)
+                                else -> app
+                            }
+                        })
+                    }
+                }
             }
-            val protectedNote = if (skipped > 0) " · $skipped protected skipped" else ""
-            _state.update { it.copy(message = "$action: $ok/${targets.size} ok$protectedNote", selected = emptySet()) }
-            load()
+            val note = if (skipped > 0) " · $skipped protected skipped" else ""
+            _state.update {
+                it.copy(busy = it.busy - targets.toSet(), selected = emptySet(), message = "$action: $ok/${targets.size} ok$note")
+            }
         }
     }
 

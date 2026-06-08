@@ -6,6 +6,7 @@ import com.unlock.core.ServiceLocator
 import com.unlock.data.DrainEntry
 import com.unlock.diagnostics.DiagnosticsReport
 import com.unlock.shizuku.ShizukuManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,20 @@ class DiagnosticsViewModel : ViewModel() {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        // Live tick: refresh the cheap sensors (battery/thermal/cpu/mem) automatically so the
+        // user never has to press Refresh. The heavy dumpsys drain list stays from the last full refresh.
+        viewModelScope.launch {
+            while (true) {
+                delay(3000)
+                runCatching {
+                    val light = ServiceLocator.diagnostics.run()
+                    _state.update { it.copy(report = light) }
+                }
+            }
+        }
+    }
 
     fun refresh() {
         viewModelScope.launch {
