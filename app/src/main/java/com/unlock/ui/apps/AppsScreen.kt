@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
+import com.unlock.core.LocalStrings
+import com.unlock.core.Strings
 import com.unlock.data.AppInfo
 import com.unlock.ui.components.AppIcon
 import com.unlock.ui.components.MessageToast
@@ -58,6 +60,7 @@ import com.unlock.ui.theme.WarnAmber
 @Composable
 fun AppsScreen(vm: AppsViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val s = LocalStrings.current
     var sheetApp by remember { mutableStateOf<AppInfo?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
@@ -65,7 +68,7 @@ fun AppsScreen(vm: AppsViewModel = viewModel()) {
         OutlinedTextField(
             value = state.query,
             onValueChange = vm::setQuery,
-            placeholder = { Text("Search ${state.apps.size} apps") },
+            placeholder = { Text(String.format(s.searchAppsFmt, state.apps.size)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -130,6 +133,7 @@ private fun FilterRow(
     onFilter: (AppsViewModel.Filter) -> Unit,
     onSort: (AppsViewModel.Sort) -> Unit,
 ) {
+    val s = LocalStrings.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
@@ -139,21 +143,21 @@ private fun FilterRow(
             FilterChip(
                 selected = filter == f,
                 onClick = { onFilter(f) },
-                label = { Text(f.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }) },
+                label = { Text(filterLabel(f, s)) },
             )
         }
         Spacer(Modifier.width(4.dp))
         var menu by remember { mutableStateOf(false) }
         AssistChip(
             onClick = { menu = true },
-            label = { Text("Sort") },
+            label = { Text(s.sort) },
             leadingIcon = { Icon(Icons.Filled.Sort, contentDescription = null) },
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            AppsViewModel.Sort.entries.forEach { s ->
+            AppsViewModel.Sort.entries.forEach { srt ->
                 DropdownMenuItem(
-                    text = { Text(s.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }) },
-                    onClick = { onSort(s); menu = false },
+                    text = { Text(sortLabel(srt, s)) },
+                    onClick = { onSort(srt); menu = false },
                 )
             }
         }
@@ -168,6 +172,7 @@ private fun SelectionBar(
     onSelectAll: () -> Unit,
     onClear: () -> Unit,
 ) {
+    val s = LocalStrings.current
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -178,9 +183,9 @@ private fun SelectionBar(
             Text("$count", style = MaterialTheme.typography.titleMedium)
             IconButton(onClick = onSelectAll) { Icon(Icons.Filled.DoneAll, contentDescription = "Select all") }
             Spacer(Modifier.weight(1f))
-            TextButton(enabled = shizukuReady, onClick = { onBatch(AppsViewModel.Batch.SLEEP) }) { Text("Sleep") }
-            TextButton(enabled = shizukuReady, onClick = { onBatch(AppsViewModel.Batch.DISABLE) }) { Text("Disable") }
-            TextButton(enabled = shizukuReady, onClick = { onBatch(AppsViewModel.Batch.UNINSTALL) }) { Text("Uninstall") }
+            TextButton(enabled = shizukuReady, onClick = { onBatch(AppsViewModel.Batch.SLEEP) }) { Text(s.actSleep) }
+            TextButton(enabled = shizukuReady, onClick = { onBatch(AppsViewModel.Batch.DISABLE) }) { Text(s.actDisable) }
+            TextButton(enabled = shizukuReady, onClick = { onBatch(AppsViewModel.Batch.UNINSTALL) }) { Text(s.actUninstall) }
         }
     }
 }
@@ -197,6 +202,7 @@ private fun AppRow(
     onLongClick: () -> Unit,
     onToggle: () -> Unit,
 ) {
+    val s = LocalStrings.current
     val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface
     Row(
         modifier = Modifier
@@ -223,15 +229,15 @@ private fun AppRow(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
                 when (app.safetyTier) {
-                    com.unlock.data.SafetyTier.PROTECTED -> TagChip("Core", DangerRed)
-                    com.unlock.data.SafetyTier.DEBLOAT_SAFE -> TagChip("Debloat-safe", com.unlock.ui.theme.OkGreen)
+                    com.unlock.data.SafetyTier.PROTECTED -> TagChip(s.tagCore, DangerRed)
+                    com.unlock.data.SafetyTier.DEBLOAT_SAFE -> TagChip(s.tagDebloatSafe, com.unlock.ui.theme.OkGreen)
                     else -> {}
                 }
-                if (app.isSystem) TagChip("System", WarnAmber)
-                if (!app.isEnabled) TagChip("Disabled", DangerRed)
-                if (app.hasBootReceiver) TagChip("Autostart")
+                if (app.isSystem) TagChip(s.fSystem, WarnAmber)
+                if (!app.isEnabled) TagChip(s.fDisabled, DangerRed)
+                if (app.hasBootReceiver) TagChip(s.fAutostart)
                 if (app.totalBytes >= 0) TagChip(Format.bytes(app.totalBytes), MaterialTheme.colorScheme.secondary)
-                if (app.lastUsed > 0) TagChip("used ${Format.timeAgo(app.lastUsed)}", MaterialTheme.colorScheme.secondary)
+                if (app.lastUsed > 0) TagChip("${s.usedPrefix} ${Format.timeAgo(app.lastUsed)}", MaterialTheme.colorScheme.secondary)
             }
         }
         when {
@@ -241,4 +247,20 @@ private fun AppRow(
                 Switch(checked = app.isEnabled, onCheckedChange = { onToggle() })
         }
     }
+}
+
+private fun filterLabel(f: AppsViewModel.Filter, s: Strings): String = when (f) {
+    AppsViewModel.Filter.ALL -> s.fAll
+    AppsViewModel.Filter.USER -> s.fUser
+    AppsViewModel.Filter.SYSTEM -> s.fSystem
+    AppsViewModel.Filter.DISABLED -> s.fDisabled
+    AppsViewModel.Filter.AUTOSTART -> s.fAutostart
+    AppsViewModel.Filter.SAFE_DEBLOAT -> s.fSafeDebloat
+}
+
+private fun sortLabel(srt: AppsViewModel.Sort, s: Strings): String = when (srt) {
+    AppsViewModel.Sort.NAME -> s.sortName
+    AppsViewModel.Sort.SIZE -> s.sortSize
+    AppsViewModel.Sort.LAST_USED -> s.sortLastUsed
+    AppsViewModel.Sort.INSTALL_DATE -> s.sortInstallDate
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
+import com.unlock.core.LocalStrings
 import com.unlock.data.DrainEntry
 import com.unlock.data.MemEntry
 import com.unlock.diagnostics.CpuCore
@@ -35,24 +36,24 @@ import com.unlock.ui.components.SeverityDot
 @Composable
 fun DiagnosticsScreen(vm: DiagnosticsViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val s = LocalStrings.current
 
     Column(
         modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("System diagnostics", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            TextButton(onClick = vm::refresh) { Text(if (state.loading) "…" else "Refresh") }
+            Text(s.systemDiagnostics, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            TextButton(onClick = vm::refresh) { Text(if (state.loading) "…" else s.refresh) }
         }
 
         MessageToast(state.message) { vm.clearMessage() }
 
         if (state.shizukuReady) {
-            SectionCard("Performance (anti-throttle)") {
+            SectionCard(s.performanceAntiThrottle) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Disables Samsung GOS + low-power mode and pins fixed-performance. Kernel/HAL throttling " +
-                            "on real heat still needs root, and some parts reset on reboot.",
+                        s.antiThrottleDesc,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -70,16 +71,16 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel = viewModel()) {
         ThermalSection(report)
         CpuSection(report)
         report.memory?.let { mem ->
-            SectionCard("Memory") {
-                LabeledBar("Used", mem.usedPercent)
-                Text("${Format.bytes(mem.totalBytes - mem.availBytes)} of ${Format.bytes(mem.totalBytes)} used • ${Format.bytes(mem.availBytes)} free", style = MaterialTheme.typography.bodySmall)
-                if (mem.lowMemory) Text("System reports LOW MEMORY", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            SectionCard(s.memory) {
+                LabeledBar(s.usedLabel, mem.usedPercent)
+                Text("${Format.bytes(mem.totalBytes - mem.availBytes)} / ${Format.bytes(mem.totalBytes)} • ${Format.bytes(mem.availBytes)} ${s.freeSuffix}", style = MaterialTheme.typography.bodySmall)
+                if (mem.lowMemory) Text(s.lowMemory, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
         report.storage?.let { st ->
-            SectionCard("Storage") {
-                LabeledBar("Used", st.usedPercent)
-                Text("${Format.bytes(st.freeBytes)} free of ${Format.bytes(st.totalBytes)}", style = MaterialTheme.typography.bodySmall)
+            SectionCard(s.tStorage) {
+                LabeledBar(s.usedLabel, st.usedPercent)
+                Text("${Format.bytes(st.freeBytes)} ${s.freeSuffix} / ${Format.bytes(st.totalBytes)}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -87,7 +88,8 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel = viewModel()) {
 
 @Composable
 private fun FindingsSection(report: DiagnosticsReport) {
-    SectionCard("Why it might feel slow") {
+    val s = LocalStrings.current
+    SectionCard(s.whySlow) {
         report.findings.forEach { f ->
             Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
                 SeverityDot(f.severity, modifier = Modifier.padding(top = 5.dp))
@@ -103,22 +105,23 @@ private fun FindingsSection(report: DiagnosticsReport) {
 
 @Composable
 private fun BatterySection(b: com.unlock.diagnostics.BatterySnapshot) {
-    SectionCard("Battery & power") {
-        KeyVal("Level", "${b.percent}%  (${b.status})")
-        KeyVal("Voltage", "${b.voltageMv} mV")
-        KeyVal("Health", b.health)
-        if (b.sohPercent in 1..100) KeyVal("State of health", "${b.sohPercent}%  ·  wear ${100 - b.sohPercent}%")
-        if (b.cycleCount >= 0) KeyVal("Charge cycles", "${b.cycleCount}")
+    val s = LocalStrings.current
+    SectionCard(s.batteryPower) {
+        KeyVal(s.dLevel, "${b.percent}%  (${b.status})")
+        KeyVal(s.dVoltage, "${b.voltageMv} mV")
+        KeyVal(s.dHealth, b.health)
+        if (b.sohPercent in 1..100) KeyVal(s.dSoh, "${b.sohPercent}%")
+        if (b.cycleCount >= 0) KeyVal(s.dCycles, "${b.cycleCount}")
         if (b.chargeFullUah > 0 && b.chargeFullDesignUah > 0) {
-            KeyVal("Capacity", "${b.chargeFullUah / 1000} / ${b.chargeFullDesignUah / 1000} mAh (now / design)")
+            KeyVal(s.dCapacity, "${b.chargeFullUah / 1000} / ${b.chargeFullDesignUah / 1000} mAh")
         }
-        KeyVal("Temperature", "${b.temperatureC}°C")
-        if (b.currentNowMicroA != Int.MIN_VALUE) KeyVal("Current now", "${b.currentNowMicroA / 1000} mA")
-        if (b.powerWatts != 0f) KeyVal("Power", String.format(java.util.Locale.US, "%.2f W", kotlin.math.abs(b.powerWatts)))
-        if (b.chargeCounterMicroAh != Int.MIN_VALUE) KeyVal("Charge counter", "${b.chargeCounterMicroAh / 1000} mAh")
-        b.technology?.let { KeyVal("Technology", it) }
+        KeyVal(s.dTemperature, "${b.temperatureC}°C")
+        if (b.currentNowMicroA != Int.MIN_VALUE) KeyVal(s.dCurrentNow, "${b.currentNowMicroA / 1000} mA")
+        if (b.powerWatts != 0f) KeyVal(s.dPower, String.format(java.util.Locale.US, "%.2f W", kotlin.math.abs(b.powerWatts)))
+        if (b.chargeCounterMicroAh != Int.MIN_VALUE) KeyVal(s.dChargeCounter, "${b.chargeCounterMicroAh / 1000} mAh")
+        b.technology?.let { KeyVal(s.dTechnology, it) }
         Text(
-            "Voltage above is the battery pack. The SoC/CPU-rail voltage and a full throttle override are not exposed without root. A low State of health is what makes the system cap sustained performance.",
+            s.voltageNote,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
         )
@@ -127,7 +130,8 @@ private fun BatterySection(b: com.unlock.diagnostics.BatterySnapshot) {
 
 @Composable
 private fun DrainSection(drainers: List<DrainEntry>) {
-    SectionCard("Top battery drain (estimated, ${drainers.size})") {
+    val s = LocalStrings.current
+    SectionCard(String.format(s.topDrainFmt, drainers.size)) {
         drainers.forEach { d ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
                 Text(
@@ -145,7 +149,8 @@ private fun DrainSection(drainers: List<DrainEntry>) {
 
 @Composable
 private fun RamSection(items: List<MemEntry>) {
-    SectionCard("Top RAM use (${items.size})") {
+    val s = LocalStrings.current
+    SectionCard(String.format(s.topRamFmt, items.size)) {
         items.forEach { e ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
                 Text(
@@ -165,10 +170,11 @@ private fun RamSection(items: List<MemEntry>) {
 private fun ThermalSection(report: DiagnosticsReport) {
     val hasData = report.thermals.isNotEmpty() || report.thermalStatus >= 0 || !report.thermalHeadroom.isNaN()
     if (!hasData) return
-    SectionCard("Thermals") {
-        if (report.thermalStatus >= 0) KeyVal("Thermal status", thermalStatusText(report.thermalStatus))
+    val s = LocalStrings.current
+    SectionCard(s.thermals) {
+        if (report.thermalStatus >= 0) KeyVal(s.thermalStatusLabel, thermalStatusText(report.thermalStatus))
         if (!report.thermalHeadroom.isNaN()) {
-            KeyVal("Headroom", String.format(java.util.Locale.US, "%.2f  (1.0 = throttling)", report.thermalHeadroom))
+            KeyVal(s.headroom, String.format(java.util.Locale.US, "%.2f  (1.0 = throttling)", report.thermalHeadroom))
         }
         report.thermals.sortedByDescending { it.tempC }.take(8).forEach {
             KeyVal(it.type, "${it.tempC}°C")
@@ -184,9 +190,10 @@ private fun thermalStatusText(s: Int) = when (s) {
 @Composable
 private fun CpuSection(report: DiagnosticsReport) {
     if (report.cores.isEmpty()) return
-    SectionCard("CPU (${report.cores.size} cores${report.governor?.let { " • $it" } ?: ""})") {
+    val s = LocalStrings.current
+    SectionCard(String.format(s.cpuTitleFmt, report.cores.size, report.governor?.let { " • $it" } ?: "")) {
         Text(
-            "Clock ceiling at ${(report.avgThrottleRatio * 100).toInt()}% of hardware max",
+            String.format(s.clockCeilingFmt, (report.avgThrottleRatio * 100).toInt()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
         )

@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.unlock.core.LocalStrings
 import com.unlock.ui.components.AppIcon
 import com.unlock.ui.components.MessageToast
 import com.unlock.ui.components.TagChip
@@ -35,6 +36,7 @@ import com.unlock.ui.components.TagChip
 @Composable
 fun RunningScreen(vm: RunningViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val s = LocalStrings.current
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
         Row(
@@ -42,8 +44,8 @@ fun RunningScreen(vm: RunningViewModel = viewModel()) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                if (state.shizukuReady) "Live processes (${state.processes.size})"
-                else "Recently active (enable Shizuku for live processes)",
+                if (state.shizukuReady) String.format(s.liveProcessesFmt, state.processes.size)
+                else s.recentlyActive,
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
             )
@@ -67,9 +69,9 @@ fun RunningScreen(vm: RunningViewModel = viewModel()) {
                         }
                     }
                     if (state.shizukuReady) {
-                        TextButton(onClick = { vm.sleep(proc.packageName) }) { Text("Sleep") }
+                        TextButton(onClick = { vm.sleep(proc.packageName) }) { Text(s.actSleep) }
                         TextButton(onClick = { vm.forceStop(proc.packageName) }) {
-                            Text("Stop", color = MaterialTheme.colorScheme.error)
+                            Text(s.actStop, color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
