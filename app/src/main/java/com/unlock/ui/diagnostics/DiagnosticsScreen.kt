@@ -107,13 +107,23 @@ private fun FindingsSection(report: DiagnosticsReport) {
 private fun BatterySection(b: com.unlock.diagnostics.BatterySnapshot) {
     SectionCard("Battery & power") {
         KeyVal("Level", "${b.percent}%  (${b.status})")
-        KeyVal("Health", b.health)
-        KeyVal("Temperature", "${b.temperatureC}°C")
         KeyVal("Voltage", "${b.voltageMv} mV")
+        KeyVal("Health", b.health)
+        if (b.sohPercent in 1..100) KeyVal("State of health", "${b.sohPercent}%  ·  wear ${100 - b.sohPercent}%")
+        if (b.cycleCount >= 0) KeyVal("Charge cycles", "${b.cycleCount}")
+        if (b.chargeFullUah > 0 && b.chargeFullDesignUah > 0) {
+            KeyVal("Capacity", "${b.chargeFullUah / 1000} / ${b.chargeFullDesignUah / 1000} mAh (now / design)")
+        }
+        KeyVal("Temperature", "${b.temperatureC}°C")
         if (b.currentNowMicroA != Int.MIN_VALUE) KeyVal("Current now", "${b.currentNowMicroA / 1000} mA")
         if (b.powerWatts != 0f) KeyVal("Power", String.format(java.util.Locale.US, "%.2f W", kotlin.math.abs(b.powerWatts)))
         if (b.chargeCounterMicroAh != Int.MIN_VALUE) KeyVal("Charge counter", "${b.chargeCounterMicroAh / 1000} mAh")
         b.technology?.let { KeyVal("Technology", it) }
+        Text(
+            "Voltage above is the battery pack. The SoC/CPU-rail voltage and a full throttle override are not exposed without root. A low State of health is what makes the system cap sustained performance.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        )
     }
 }
 

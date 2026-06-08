@@ -13,6 +13,9 @@ data class BatterySnapshot(
     val currentAvgMicroA: Int,
     val chargeCounterMicroAh: Int,
     val energyCounterNwh: Long,
+    val chargeFullUah: Int = -1,
+    val chargeFullDesignUah: Int = -1,
+    val cycleCount: Int = -1,
 ) {
     /** Negative while discharging on most devices. Watts. */
     val powerWatts: Float
@@ -20,6 +23,11 @@ data class BatterySnapshot(
             (voltageMv / 1000f) * (currentNowMicroA / 1_000_000f) else 0f
 
     val dischargingMilliAmps: Int get() = currentNowMicroA / 1000
+
+    /** State of health: current full-charge capacity vs factory design capacity (%). -1 if unknown. */
+    val sohPercent: Int
+        get() = if (chargeFullDesignUah > 0 && chargeFullUah > 0)
+            chargeFullUah * 100 / chargeFullDesignUah else -1
 }
 
 data class ThermalZone(val type: String, val tempC: Float)
