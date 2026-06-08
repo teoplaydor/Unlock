@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
+import com.unlock.core.LocalStrings
 import com.unlock.diagnostics.DiagnosticsReport
 import com.unlock.shizuku.ShizukuManager
 import com.unlock.ui.components.SeverityDot
@@ -45,6 +46,7 @@ fun DashboardScreen(
     vm: DashboardViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val s = LocalStrings.current
 
     Column(
         modifier = Modifier
@@ -62,24 +64,24 @@ fun DashboardScreen(
         state.report?.let { report ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 report.battery?.let {
-                    StatTile(Icons.Filled.BatteryFull, "Battery", "${it.percent}%", "${it.temperatureC.toInt()}°C • ${it.health}", Modifier.weight(1f))
+                    StatTile(Icons.Filled.BatteryFull, s.tBattery, "${it.percent}%", "${it.temperatureC.toInt()}°C • ${it.health}", Modifier.weight(1f))
                 }
                 report.maxTempC?.let {
-                    StatTile(Icons.Filled.DeviceThermostat, "Peak temp", "${it.toInt()}°C", "${report.thermals.size} sensors", Modifier.weight(1f))
+                    StatTile(Icons.Filled.DeviceThermostat, s.tPeakTemp, "${it.toInt()}°C", "${report.thermals.size} ${s.sensorsSuffix}", Modifier.weight(1f))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 report.memory?.let {
-                    StatTile(Icons.Filled.Memory, "RAM", "${it.usedPercent}%", "${Format.bytes(it.availBytes)} free", Modifier.weight(1f))
+                    StatTile(Icons.Filled.Memory, s.tRam, "${it.usedPercent}%", "${Format.bytes(it.availBytes)} ${s.freeSuffix}", Modifier.weight(1f))
                 }
                 report.storage?.let {
-                    StatTile(Icons.Filled.Storage, "Storage", "${it.usedPercent}%", "${Format.bytes(it.freeBytes)} free", Modifier.weight(1f))
+                    StatTile(Icons.Filled.Storage, s.tStorage, "${it.usedPercent}%", "${Format.bytes(it.freeBytes)} ${s.freeSuffix}", Modifier.weight(1f))
                 }
             }
             report.battery?.takeIf { it.powerWatts != 0f }?.let {
                 StatTile(
                     Icons.Filled.Bolt,
-                    "Power draw",
+                    s.tPowerDraw,
                     String.format(java.util.Locale.US, "%.2f W", kotlin.math.abs(it.powerWatts)),
                     "${kotlin.math.abs(it.dischargingMilliAmps)} mA @ ${it.voltageMv} mV",
                     Modifier.fillMaxWidth(),
@@ -100,6 +102,7 @@ fun DashboardScreen(
 
 @Composable
 private fun HealthCard(report: DiagnosticsReport?, loading: Boolean, onRefresh: () -> Unit) {
+    val s = LocalStrings.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -114,14 +117,14 @@ private fun HealthCard(report: DiagnosticsReport?, loading: Boolean, onRefresh: 
                 }
                 Spacer(Modifier.size(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Performance health", style = MaterialTheme.typography.titleMedium)
+                    Text(s.performanceHealth, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        report?.findings?.firstOrNull()?.title ?: "Analysing…",
+                        report?.findings?.firstOrNull()?.title ?: s.analysing,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     )
                 }
-                TextButton(onClick = onRefresh) { Text("Refresh") }
+                TextButton(onClick = onRefresh) { Text(s.refresh) }
             }
             report?.findings?.take(4)?.forEach { f ->
                 Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Top) {
@@ -159,20 +162,21 @@ private fun InventoryCard(
     onApps: () -> Unit,
     onAutostart: () -> Unit,
 ) {
+    val s = LocalStrings.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Inventory", style = MaterialTheme.typography.titleMedium)
+            Text(s.inventory, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.size(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Counter("User", userApps)
-                Counter("System", systemApps)
-                Counter("Disabled", disabled)
-                Counter("Autostart", autostart)
+                Counter(s.invUser, userApps)
+                Counter(s.invSystem, systemApps)
+                Counter(s.invDisabled, disabled)
+                Counter(s.invAutostart, autostart)
             }
             Spacer(Modifier.size(8.dp))
             Row {
-                TextButton(onClick = onApps) { Text("Manage apps") }
-                TextButton(onClick = onAutostart) { Text("Autostart") }
+                TextButton(onClick = onApps) { Text(s.manageApps) }
+                TextButton(onClick = onAutostart) { Text(s.navAutostart) }
             }
         }
     }
@@ -188,20 +192,21 @@ private fun Counter(label: String, value: Int) {
 
 @Composable
 private fun ShizukuBanner(state: ShizukuManager.State, onOpen: () -> Unit) {
+    val s = LocalStrings.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Full power is off", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(s.fullPowerOff, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text(
                     when (state) {
-                        ShizukuManager.State.NEEDS_PERMISSION -> "Shizuku is running — grant permission to unlock system-app control."
-                        else -> "Connect Shizuku (no root) to uninstall/disable/sleep system apps."
+                        ShizukuManager.State.NEEDS_PERMISSION -> s.bannerNeedsPerm
+                        else -> s.bannerNotRunning
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 )
             }
-            TextButton(onClick = onOpen) { Text("Set up") }
+            TextButton(onClick = onOpen) { Text(s.setUp) }
         }
     }
 }

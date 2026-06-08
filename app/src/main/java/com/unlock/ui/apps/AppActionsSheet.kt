@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.unlock.core.Format
+import com.unlock.core.LocalStrings
 import com.unlock.core.ServiceLocator
 import com.unlock.data.AppInfo
 import com.unlock.ui.components.AppIcon
@@ -45,6 +46,7 @@ fun AppActionsSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val s = LocalStrings.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     fun close() = onDismiss()
@@ -65,24 +67,24 @@ fun AppActionsSheet(
             }
 
             Spacer(Modifier.size(12.dp))
-            InfoLine("Version", "${app.versionName ?: "?"} (${app.versionCode})")
-            InfoLine("Type", buildString {
-                append(if (app.isSystem) "System" else "User")
+            InfoLine(s.sheetVersion, "${app.versionName ?: "?"} (${app.versionCode})")
+            InfoLine(s.sheetType, buildString {
+                append(if (app.isSystem) s.typeSystem else s.typeUser)
                 if (app.isUpdatedSystemApp) append(" (updated)")
-                if (!app.isEnabled) append(" • Disabled")
+                if (!app.isEnabled) append(" • ${s.fDisabled}")
             })
             if (app.totalBytes >= 0) {
-                InfoLine("Size", "${Format.bytes(app.totalBytes)} (app ${Format.bytes(app.appBytes)}, data ${Format.bytes(app.dataBytes)}, cache ${Format.bytes(app.cacheBytes)})")
+                InfoLine(s.sheetSize, "${Format.bytes(app.totalBytes)} (app ${Format.bytes(app.appBytes)}, data ${Format.bytes(app.dataBytes)}, cache ${Format.bytes(app.cacheBytes)})")
             }
-            if (app.lastUsed > 0) InfoLine("Last used", Format.timeAgo(app.lastUsed))
-            if (app.totalForegroundMs > 0) InfoLine("Foreground (30d)", Format.durationMs(app.totalForegroundMs))
-            InfoLine("Target SDK", app.targetSdk.toString())
-            app.installerPackage?.let { InfoLine("Installer", it) }
+            if (app.lastUsed > 0) InfoLine(s.sheetLastUsed, Format.timeAgo(app.lastUsed))
+            if (app.totalForegroundMs > 0) InfoLine(s.sheetForeground, Format.durationMs(app.totalForegroundMs))
+            InfoLine(s.sheetTargetSdk, app.targetSdk.toString())
+            app.installerPackage?.let { InfoLine(s.sheetInstaller, it) }
 
             if (app.isProtected) {
                 Spacer(Modifier.size(10.dp))
                 Text(
-                    "⛔ Protected core package — removing or disabling it can bootloop the phone or break payments / Secure Folder. Destructive actions are blocked.",
+                    s.protectedSheetNote,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -92,18 +94,18 @@ fun AppActionsSheet(
 
             val destructiveEnabled = shizukuReady && !app.isProtected
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetButton("Force stop", Icons.Filled.Stop, enabled = shizukuReady) { vm.forceStop(app.packageName); close() }
-                SheetButton("Sleep", Icons.Filled.Bedtime, enabled = destructiveEnabled) { vm.sleep(app.packageName); close() }
+                SheetButton(s.actForceStop, Icons.Filled.Stop, enabled = shizukuReady) { vm.forceStop(app.packageName); close() }
+                SheetButton(s.actSleep, Icons.Filled.Bedtime, enabled = destructiveEnabled) { vm.sleep(app.packageName); close() }
                 if (app.isEnabled) {
-                    SheetButton("Disable", Icons.Filled.Block, enabled = destructiveEnabled) { vm.disable(app.packageName); close() }
+                    SheetButton(s.actDisable, Icons.Filled.Block, enabled = destructiveEnabled) { vm.disable(app.packageName); close() }
                 } else {
-                    SheetButton("Enable", Icons.Filled.CheckCircle, enabled = shizukuReady) { vm.enable(app.packageName); close() }
+                    SheetButton(s.actEnable, Icons.Filled.CheckCircle, enabled = shizukuReady) { vm.enable(app.packageName); close() }
                 }
-                SheetButton("Clear data", Icons.Filled.CleaningServices, enabled = destructiveEnabled) { vm.clearData(app.packageName); close() }
+                SheetButton(s.actClearData, Icons.Filled.CleaningServices, enabled = destructiveEnabled) { vm.clearData(app.packageName); close() }
                 if (app.isSystem) {
-                    SheetButton("Restore", Icons.Filled.Restore, enabled = shizukuReady) { vm.reinstall(app.packageName); close() }
+                    SheetButton(s.actRestore, Icons.Filled.Restore, enabled = shizukuReady) { vm.reinstall(app.packageName); close() }
                 }
-                SheetButton("Uninstall", Icons.Filled.Delete, enabled = (shizukuReady || !app.isSystem) && !app.isProtected) {
+                SheetButton(s.actUninstall, Icons.Filled.Delete, enabled = (shizukuReady || !app.isSystem) && !app.isProtected) {
                     if (shizukuReady) {
                         vm.uninstall(app.packageName)
                     } else {
@@ -111,7 +113,7 @@ fun AppActionsSheet(
                     }
                     close()
                 }
-                SheetButton("App info", Icons.Filled.Info, enabled = true) {
+                SheetButton(s.actAppInfo, Icons.Filled.Info, enabled = true) {
                     context.startActivity(ServiceLocator.appActions.appDetailsIntent(app.packageName))
                     close()
                 }

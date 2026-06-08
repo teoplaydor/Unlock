@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.unlock.core.LocalStrings
 import com.unlock.ui.components.AppIcon
 import com.unlock.ui.components.MessageToast
 import com.unlock.ui.components.TagChip
@@ -29,19 +30,19 @@ import com.unlock.ui.components.TagChip
 @Composable
 fun AutostartScreen(vm: AutostartViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val s = LocalStrings.current
 
     MessageToast(state.message) { vm.clearMessage() }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
         Text(
-            "Apps that start themselves on boot (${state.apps.size})",
+            String.format(s.autostartTitleFmt, state.apps.size),
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(vertical = 6.dp),
         )
         if (!state.shizukuReady) {
             Text(
-                "Connect Shizuku to control autostart. The toggle stops the whole app's autostart " +
-                    "(works on Samsung); per-component disable isn't possible without root.",
+                s.connectShizukuAutostart,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 modifier = Modifier.padding(bottom = 6.dp),
@@ -60,13 +61,13 @@ fun AutostartScreen(vm: AutostartViewModel = viewModel()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(app.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            if (stopped) "Autostart stopped" else "Autostart allowed · ${app.receivers.size} trigger(s)",
+                            if (stopped) s.autostartStopped else String.format(s.autostartAllowedFmt, app.receivers.size),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (stopped) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         )
                         if (app.isProtected) {
-                            Row(modifier = Modifier.padding(top = 2.dp)) { TagChip("Core", MaterialTheme.colorScheme.error) }
+                            Row(modifier = Modifier.padding(top = 2.dp)) { TagChip(s.tagCore, MaterialTheme.colorScheme.error) }
                         }
                     }
                     if (app.packageName in state.busy) {
