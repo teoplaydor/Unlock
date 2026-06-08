@@ -165,6 +165,9 @@ data class Strings(
     val fStorageT: String, val fStorageD: String,
     val fRamT: String, val fRamD: String,
     val fOkT: String, val fOkD: String,
+    val navTweaks: String,
+    val tweaksApply: String,
+    val tweaksNeedShizuku: String,
 ) {
     companion object {
         fun en() = Strings(
@@ -328,6 +331,9 @@ data class Strings(
             fRamD = "The low-memory killer is recycling apps, so switching back reloads them from scratch.",
             fOkT = "No obvious bottleneck",
             fOkD = "Thermals, clocks, storage and memory all look healthy right now.",
+            navTweaks = "Tweaks",
+            tweaksApply = "Apply",
+            tweaksNeedShizuku = "Connect Shizuku to use these features.",
         )
 
         fun ru() = Strings(
@@ -491,6 +497,9 @@ data class Strings(
             fRamD = "Система выгружает приложения из памяти, поэтому при возврате они загружаются заново.",
             fOkT = "Явных узких мест нет",
             fOkD = "Температуры, частоты, хранилище и память сейчас в норме.",
+            navTweaks = "Фишки",
+            tweaksApply = "Применить",
+            tweaksNeedShizuku = "Подключите Shizuku, чтобы пользоваться этими фишками.",
         )
     }
 }
