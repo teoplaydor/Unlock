@@ -12,6 +12,14 @@ data class DrainEntry(
     val mAh: Double,
 )
 
+data class BatteryHealth(
+    val sohPercent: Int,            // direct % (Samsung) or computed from capacity; -1 if unknown
+    val cycleCount: Int,
+    val chargeFullUah: Int,        // -1 if not from sysfs
+    val chargeFullDesignUah: Int, // -1 if not from sysfs
+    val source: String,
+)
+
 /**
  * Per-app battery blame. The accurate, no-root source is `dumpsys batterystats --checkin`
  * parsed defensively (its format drifts across OEMs/versions). Requires Shizuku.
@@ -47,6 +55,34 @@ class BatteryForensicsRepository(private val context: Context) {
                 } ?: wellKnownUid(uid) ?: "uid $uid"
                 DrainEntry(uid, label, pkg, mah)
             }
+    }
+
+    /** Reads true State of Health via Shizuku: sysfs design capacity, else Samsung dumpsys ASOC/BSOH. */
+    suspend fun batteryHealth(): BatteryHealth? {
+        if (!ShizukuManager.isReady) return null
+        val full = catInt("/sys/class/power_supply/battery/charge_full")
+            ?: catInt("/sys/class/power_supply/bms/charge_full")
+        val design = catInt("/sys/class/power_supply/battery/charge_full_design")
+            ?: catInt("/sys/class/power_supply/bms/charge_full_design")
+        val cycles = catInt("/sys/class/power_supply/battery/cycle_count")
+            ?: catInt("/sys/class/power_supply/bms/cycle_count") ?: -1
+        if (full != null && design != null && design > 0) {
+            return BatteryHealth((full * 100 / design).coerceIn(0, 100), cycles, full, design, "sysfs")
+        }
+        // Samsung One UI exposes ASOC/BSOH in dumpsys battery.
+        val dump = ShizukuManager.exec("dumpsys", "battery").output
+        val soh = Regex("(?i)(?:mBatteryAsoc|BSOH|mSavedBatteryAsoc)\\D*(\\d{1,3})")
+            .find(dump)?.groupValues?.get(1)?.toIntOrNull()
+        val cyc = Regex("(?i)cycle\\s*count\\D*(\\d+)").find(dump)?.groupValues?.get(1)?.toIntOrNull() ?: cycles
+        if (soh != null && soh in 1..100) return BatteryHealth(soh, cyc, -1, -1, "samsung")
+        if (cyc >= 0) return BatteryHealth(-1, cyc, -1, -1, "dumpsys")
+        return null
+    }
+
+    private suspend fun catInt(path: String): Int? {
+        val r = ShizukuManager.exec("cat", path)
+        if (!r.success) return null
+        return r.output.trim().toIntOrNull()
     }
 
     private fun wellKnownUid(uid: Int): String? = when (uid) {

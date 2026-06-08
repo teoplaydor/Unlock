@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
 import com.unlock.data.DrainEntry
+import com.unlock.data.MemEntry
 import com.unlock.diagnostics.CpuCore
 import com.unlock.diagnostics.DiagnosticsReport
 import com.unlock.ui.components.SeverityDot
@@ -64,10 +65,23 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel = viewModel()) {
             }
         }
 
+        if (state.shizukuReady) {
+            SectionCard("Performance (anti-throttle)") {
+                Text(
+                    "Turns off Samsung GOS + low-power mode and pins fixed-performance. Honest limit: " +
+                        "kernel/HAL throttling on real heat still applies (needs root), and these reset on reboot — re-apply as needed.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.padding(4.dp))
+                FilledTonalButton(onClick = vm::boostPerformance) { Text("Boost performance") }
+            }
+        }
+
         val report = state.report ?: return@Column
 
         FindingsSection(report)
         if (state.shizukuReady && state.drainers.isNotEmpty()) DrainSection(state.drainers)
+        if (state.shizukuReady && state.ramConsumers.isNotEmpty()) RamSection(state.ramConsumers)
         report.battery?.let { BatterySection(it) }
         ThermalSection(report)
         CpuSection(report)
@@ -140,6 +154,24 @@ private fun DrainSection(drainers: List<DrainEntry>) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(String.format(java.util.Locale.US, "%.1f mAh", d.mAh), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RamSection(items: List<MemEntry>) {
+    SectionCard("Top RAM use (${items.size})") {
+        items.forEach { e ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                Text(
+                    e.processName,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(Format.bytes(e.pssKb * 1024), style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

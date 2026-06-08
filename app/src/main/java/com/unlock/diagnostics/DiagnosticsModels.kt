@@ -16,6 +16,7 @@ data class BatterySnapshot(
     val chargeFullUah: Int = -1,
     val chargeFullDesignUah: Int = -1,
     val cycleCount: Int = -1,
+    val sohPercentDirect: Int = -1, // when a device reports SoH directly (e.g. Samsung ASOC/BSOH)
 ) {
     /** Negative while discharging on most devices. Watts. */
     val powerWatts: Float
@@ -24,10 +25,13 @@ data class BatterySnapshot(
 
     val dischargingMilliAmps: Int get() = currentNowMicroA / 1000
 
-    /** State of health: current full-charge capacity vs factory design capacity (%). -1 if unknown. */
+    /** State of health: direct % if reported, else current full-charge vs design capacity. -1 unknown. */
     val sohPercent: Int
-        get() = if (chargeFullDesignUah > 0 && chargeFullUah > 0)
-            chargeFullUah * 100 / chargeFullDesignUah else -1
+        get() = when {
+            sohPercentDirect in 1..100 -> sohPercentDirect
+            chargeFullDesignUah > 0 && chargeFullUah > 0 -> chargeFullUah * 100 / chargeFullDesignUah
+            else -> -1
+        }
 }
 
 data class ThermalZone(val type: String, val tempC: Float)

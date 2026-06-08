@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unlock.core.ServiceLocator
 import com.unlock.data.DrainEntry
+import com.unlock.data.MemEntry
+import com.unlock.diagnostics.BatterySnapshot
 import com.unlock.diagnostics.DiagnosticsReport
 import com.unlock.shizuku.ShizukuManager
 import kotlinx.coroutines.delay
@@ -19,6 +21,7 @@ class DiagnosticsViewModel : ViewModel() {
         val loading: Boolean = true,
         val report: DiagnosticsReport? = null,
         val drainers: List<DrainEntry> = emptyList(),
+        val ramConsumers: List<MemEntry> = emptyList(),
         val gosPackage: String? = null,
         val shizukuReady: Boolean = false,
         val message: String? = null,
@@ -29,14 +32,14 @@ class DiagnosticsViewModel : ViewModel() {
 
     init {
         refresh()
-        // Live tick: refresh the cheap sensors (battery/thermal/cpu/mem) automatically so the
-        // user never has to press Refresh. The heavy dumpsys drain list stays from the last full refresh.
+        // Live tick: refresh the cheap sensors automatically so the user never presses Refresh.
+        // The heavy dumpsys lists (drain, RAM) stay from the last full refresh; SoH is preserved.
         viewModelScope.launch {
             while (true) {
                 delay(3000)
                 runCatching {
                     val light = ServiceLocator.diagnostics.run()
-                    _state.update { it.copy(report = light) }
+                    _state.update { st -> st.copy(report = mergeHealth(light, st.report?.battery)) }
                 }
             }
         }
@@ -45,15 +48,18 @@ class DiagnosticsViewModel : ViewModel() {
     fun refresh() {
         viewModelScope.launch {
             _state.update {
-                it.copy(
-                    loading = true,
-                    shizukuReady = ShizukuManager.isReady,
-                    gosPackage = ServiceLocator.samsungGosPackage(),
-                )
+                it.copy(loading = true, shizukuReady = ShizukuManager.isReady, gosPackage = ServiceLocator.samsungGosPackage())
             }
-            val report = ServiceLocator.diagnostics.run()
-            val drainers = if (ShizukuManager.isReady) ServiceLocator.batteryForensics.topDrain() else emptyList()
-            _state.update { it.copy(loading = false, report = report, drainers = drainers) }
+            var report = ServiceLocator.diagnostics.run()
+            var drainers = emptyList<DrainEntry>()
+            var ram = emptyList<MemEntry>()
+            if (ShizukuManager.isReady) {
+                val health = ServiceLocator.batteryForensics.batteryHealth()
+                report = applyHealth(report, health)
+                drainers = ServiceLocator.batteryForensics.topDrain()
+                ram = ServiceLocator.memoryRepository.topMemory()
+            }
+            _state.update { it.copy(loading = false, report = report, drainers = drainers, ramConsumers = ram) }
         }
     }
 
@@ -74,5 +80,51 @@ class DiagnosticsViewModel : ViewModel() {
         }
     }
 
+    /** Best-effort no-root anti-throttle: GOS off + low-power off + fixed-performance + thermal status. */
+    fun boostPerformance() {
+        viewModelScope.launch {
+            if (!ShizukuManager.isReady) {
+                _state.update { it.copy(message = "Performance boost needs Shizuku.") }
+                return@launch
+            }
+            _state.update { it.copy(message = "Applying performance levers…") }
+            val results = ServiceLocator.appActions.boostPerformance(ServiceLocator.samsungGosPackages())
+            val ok = results.count { it.success }
+            _state.update {
+                it.copy(
+                    message = "Applied $ok/${results.size} levers. Note: kernel/HAL throttling still applies on real heat, and these reset on reboot.",
+                    gosPackage = ServiceLocator.samsungGosPackage(),
+                )
+            }
+        }
+    }
+
     fun clearMessage() = _state.update { it.copy(message = null) }
+
+    private fun applyHealth(report: DiagnosticsReport, h: com.unlock.data.BatteryHealth?): DiagnosticsReport {
+        val b = report.battery ?: return report
+        if (h == null) return report
+        return report.copy(
+            battery = b.copy(
+                sohPercentDirect = h.sohPercent,
+                cycleCount = if (h.cycleCount >= 0) h.cycleCount else b.cycleCount,
+                chargeFullUah = if (h.chargeFullUah > 0) h.chargeFullUah else b.chargeFullUah,
+                chargeFullDesignUah = if (h.chargeFullDesignUah > 0) h.chargeFullDesignUah else b.chargeFullDesignUah,
+            ),
+        )
+    }
+
+    /** Carry the previously-resolved SoH/cycle fields into a freshly-sampled light report. */
+    private fun mergeHealth(report: DiagnosticsReport, prev: BatterySnapshot?): DiagnosticsReport {
+        val b = report.battery ?: return report
+        if (prev == null) return report
+        return report.copy(
+            battery = b.copy(
+                sohPercentDirect = prev.sohPercentDirect,
+                cycleCount = if (prev.cycleCount >= 0) prev.cycleCount else b.cycleCount,
+                chargeFullUah = if (prev.chargeFullUah > 0) prev.chargeFullUah else b.chargeFullUah,
+                chargeFullDesignUah = if (prev.chargeFullDesignUah > 0) prev.chargeFullDesignUah else b.chargeFullDesignUah,
+            ),
+        )
+    }
 }
