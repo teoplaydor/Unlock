@@ -26,6 +26,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
 import com.unlock.core.LocalStrings
+import com.unlock.core.batteryHealthText
+import com.unlock.core.batteryStatusText
+import com.unlock.core.thermalStatusTextL
 import com.unlock.data.DrainEntry
 import com.unlock.data.MemEntry
 import com.unlock.diagnostics.CpuCore
@@ -107,9 +110,9 @@ private fun FindingsSection(report: DiagnosticsReport) {
 private fun BatterySection(b: com.unlock.diagnostics.BatterySnapshot) {
     val s = LocalStrings.current
     SectionCard(s.batteryPower) {
-        KeyVal(s.dLevel, "${b.percent}%  (${b.status})")
+        KeyVal(s.dLevel, "${b.percent}%  (${batteryStatusText(b.statusCode, s)})")
         KeyVal(s.dVoltage, "${b.voltageMv} mV")
-        KeyVal(s.dHealth, b.health)
+        KeyVal(s.dHealth, batteryHealthText(b.healthCode, s))
         if (b.sohPercent in 1..100) KeyVal(s.dSoh, "${b.sohPercent}%")
         if (b.cycleCount >= 0) KeyVal(s.dCycles, "${b.cycleCount}")
         if (b.chargeFullUah > 0 && b.chargeFullDesignUah > 0) {
@@ -172,7 +175,7 @@ private fun ThermalSection(report: DiagnosticsReport) {
     if (!hasData) return
     val s = LocalStrings.current
     SectionCard(s.thermals) {
-        if (report.thermalStatus >= 0) KeyVal(s.thermalStatusLabel, thermalStatusText(report.thermalStatus))
+        if (report.thermalStatus >= 0) KeyVal(s.thermalStatusLabel, thermalStatusTextL(report.thermalStatus, s))
         if (!report.thermalHeadroom.isNaN()) {
             KeyVal(s.headroom, String.format(java.util.Locale.US, "%.2f  (1.0 = throttling)", report.thermalHeadroom))
         }
@@ -182,10 +185,6 @@ private fun ThermalSection(report: DiagnosticsReport) {
     }
 }
 
-private fun thermalStatusText(s: Int) = when (s) {
-    0 -> "None"; 1 -> "Light"; 2 -> "Moderate"; 3 -> "Severe"
-    4 -> "Critical"; 5 -> "Emergency"; 6 -> "Shutdown"; else -> "Unknown"
-}
 
 @Composable
 private fun CpuSection(report: DiagnosticsReport) {

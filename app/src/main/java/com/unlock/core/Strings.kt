@@ -130,6 +130,41 @@ data class Strings(
     val sUndo: String,
     val sSafety: String,
     val sSafetyBody: String,
+    // dynamic: battery status / health, thermal status, autostart safety
+    val batCharging: String,
+    val batDischarging: String,
+    val batFull: String,
+    val batNotCharging: String,
+    val batStatusUnknown: String,
+    val batGood: String,
+    val batOverheat: String,
+    val batDead: String,
+    val batOverVoltage: String,
+    val batCold: String,
+    val batFailure: String,
+    val batHealthUnknown: String,
+    val thNone: String,
+    val thLight: String,
+    val thModerate: String,
+    val thSevere: String,
+    val thCritical: String,
+    val thEmergency: String,
+    val thShutdown: String,
+    val thUnknown: String,
+    val asSafeToStop: String,
+    val asUseCaution: String,
+    val asDontTouch: String,
+    val fThermalCritT: String, val fThermalCritD: String,
+    val fThermalThrottT: String, val fThermalThrottD: String,
+    val fSevereHeatT: String, val fSevereHeatD: String,
+    val fRunWarmT: String, val fRunWarmD: String,
+    val fCpuCapT: String, val fCpuCapD: String,
+    val fGovT: String, val fGovD: String,
+    val fBatHealthT: String, val fBatHealthD: String,
+    val fBatHotT: String, val fBatHotD: String,
+    val fStorageT: String, val fStorageD: String,
+    val fRamT: String, val fRamD: String,
+    val fOkT: String, val fOkD: String,
 ) {
     companion object {
         fun en() = Strings(
@@ -248,6 +283,51 @@ data class Strings(
             sUndo = "Undo",
             sSafety = "Safety",
             sSafetyBody = "• Uninstall removes apps for the current user only (--user 0); most are restorable, and a factory reset brings system apps back.\n• Disable is fully reversible.\n• Don't remove core packages (SystemUI, phone, providers) — it can cause a bootloop.\n• Unlock never requires root and sends nothing off-device.",
+            batCharging = "Charging",
+            batDischarging = "Discharging",
+            batFull = "Full",
+            batNotCharging = "Not charging",
+            batStatusUnknown = "Unknown",
+            batGood = "Good",
+            batOverheat = "Overheating",
+            batDead = "Dead",
+            batOverVoltage = "Over-voltage",
+            batCold = "Cold",
+            batFailure = "Failure",
+            batHealthUnknown = "Unknown",
+            thNone = "None",
+            thLight = "Light",
+            thModerate = "Moderate",
+            thSevere = "Severe",
+            thCritical = "Critical",
+            thEmergency = "Emergency",
+            thShutdown = "Shutdown",
+            thUnknown = "Unknown",
+            asSafeToStop = "Safe to stop",
+            asUseCaution = "Use caution",
+            asDontTouch = "Don't touch (system core)",
+            fThermalCritT = "Thermal status: critical",
+            fThermalCritD = "Android's thermal service reports a critical state — the system is aggressively throttling.",
+            fThermalThrottT = "Thermal status: throttling",
+            fThermalThrottD = "Android reports a moderate/severe thermal state, so performance is being held back.",
+            fSevereHeatT = "Severe heat (%d°C)",
+            fSevereHeatD = "%s is very hot — the SoC is almost certainly throttling clocks to cool down.",
+            fRunWarmT = "Running warm (%d°C)",
+            fRunWarmD = "Sustained load is heating %s; expect some thermal throttling.",
+            fCpuCapT = "CPU capped at %d%% of max",
+            fCpuCapD = "Cores are pinned below their hardware ceiling — thermal/battery throttling or a power-save governor.",
+            fGovT = "Power-save CPU governor (%s)",
+            fGovD = "The scheduler is favouring efficiency over speed, which can feel sluggish.",
+            fBatHealthT = "Battery health: %s",
+            fBatHealthD = "A degraded battery can't hold voltage under load, so the SoC down-clocks to avoid brownouts.",
+            fBatHotT = "Battery hot (%d°C)",
+            fBatHotD = "High battery temperature triggers protective throttling and faster wear.",
+            fStorageT = "Storage %d%% full",
+            fStorageD = "Near-full flash slows writes and starves ART/dex optimisation — a classic cause of lag.",
+            fRamT = "RAM pressure (%d%% used)",
+            fRamD = "The low-memory killer is recycling apps, so switching back reloads them from scratch.",
+            fOkT = "No obvious bottleneck",
+            fOkD = "Thermals, clocks, storage and memory all look healthy right now.",
         )
 
         fun ru() = Strings(
@@ -366,8 +446,82 @@ data class Strings(
             sUndo = "Отменить",
             sSafety = "Безопасность",
             sSafetyBody = "• Удаление убирает приложение только для текущего пользователя (--user 0); большинство восстановимо, а сброс к заводским возвращает системные приложения.\n• Отключение полностью обратимо.\n• Не удаляйте ключевые пакеты (SystemUI, телефон, провайдеры) — это может вызвать bootloop.\n• Unlock не требует root и ничего не отправляет с устройства.",
+            batCharging = "Заряжается",
+            batDischarging = "Разряжается",
+            batFull = "Заряжена",
+            batNotCharging = "Не заряжается",
+            batStatusUnknown = "Неизвестно",
+            batGood = "Хорошее",
+            batOverheat = "Перегрев",
+            batDead = "Изношена",
+            batOverVoltage = "Перенапряжение",
+            batCold = "Холодная",
+            batFailure = "Сбой",
+            batHealthUnknown = "Неизвестно",
+            thNone = "Нет",
+            thLight = "Слабый",
+            thModerate = "Умеренный",
+            thSevere = "Сильный",
+            thCritical = "Критический",
+            thEmergency = "Авария",
+            thShutdown = "Выключение",
+            thUnknown = "Неизвестно",
+            asSafeToStop = "Безопасно остановить",
+            asUseCaution = "С осторожностью",
+            asDontTouch = "Не трогать (ядро системы)",
+            fThermalCritT = "Тепловой статус: критический",
+            fThermalCritD = "Тепловая служба Android сообщает о критическом состоянии — система агрессивно троттлит.",
+            fThermalThrottT = "Тепловой статус: троттлинг",
+            fThermalThrottD = "Android сообщает об умеренном/сильном нагреве, поэтому производительность ограничивается.",
+            fSevereHeatT = "Сильный нагрев (%d°C)",
+            fSevereHeatD = "%s сильно греется — SoC почти наверняка снижает частоты для охлаждения.",
+            fRunWarmT = "Заметный нагрев (%d°C)",
+            fRunWarmD = "Длительная нагрузка греет %s; вероятен тепловой троттлинг.",
+            fCpuCapT = "Частота ЦП ограничена до %d%% от максимума",
+            fCpuCapD = "Ядра зажаты ниже аппаратного потолка — тепловой/батарейный троттлинг или энергосбережение.",
+            fGovT = "Энергосберегающий режим ЦП (%s)",
+            fGovD = "Планировщик выбирает экономию вместо скорости — может ощущаться как тормоза.",
+            fBatHealthT = "Состояние батареи: %s",
+            fBatHealthD = "Изношенная батарея не держит напряжение под нагрузкой, поэтому SoC снижает частоты.",
+            fBatHotT = "Батарея греется (%d°C)",
+            fBatHotD = "Высокая температура батареи включает защитный троттлинг и ускоряет износ.",
+            fStorageT = "Хранилище заполнено на %d%%",
+            fStorageD = "Почти полная память замедляет запись и мешает оптимизации ART/dex — частая причина лагов.",
+            fRamT = "Нехватка ОЗУ (занято %d%%)",
+            fRamD = "Система выгружает приложения из памяти, поэтому при возврате они загружаются заново.",
+            fOkT = "Явных узких мест нет",
+            fOkD = "Температуры, частоты, хранилище и память сейчас в норме.",
         )
     }
 }
 
 val LocalStrings = staticCompositionLocalOf { Strings.en() }
+
+fun batteryStatusText(code: Int, s: Strings): String = when (code) {
+    2 -> s.batCharging
+    3 -> s.batDischarging
+    4 -> s.batNotCharging
+    5 -> s.batFull
+    else -> s.batStatusUnknown
+}
+
+fun batteryHealthText(code: Int, s: Strings): String = when (code) {
+    2 -> s.batGood
+    3 -> s.batOverheat
+    4 -> s.batDead
+    5 -> s.batOverVoltage
+    6 -> s.batFailure
+    7 -> s.batCold
+    else -> s.batHealthUnknown
+}
+
+fun thermalStatusTextL(code: Int, s: Strings): String = when (code) {
+    0 -> s.thNone
+    1 -> s.thLight
+    2 -> s.thModerate
+    3 -> s.thSevere
+    4 -> s.thCritical
+    5 -> s.thEmergency
+    6 -> s.thShutdown
+    else -> s.thUnknown
+}

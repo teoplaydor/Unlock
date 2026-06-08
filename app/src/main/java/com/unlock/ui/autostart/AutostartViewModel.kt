@@ -18,6 +18,7 @@ data class AutostartApp(
     val packageName: String,
     val label: String,
     val isProtected: Boolean,
+    val safetyTier: com.unlock.data.SafetyTier,
     val receivers: List<String>,
 )
 
@@ -56,6 +57,7 @@ class AutostartViewModel : ViewModel() {
                             packageName = pkg,
                             label = list.first().label,
                             isProtected = list.any { it.isProtected },
+                            safetyTier = list.first().safetyTier,
                             receivers = list.map { it.receiverClass.substringAfterLast('.') }.distinct(),
                         )
                     }

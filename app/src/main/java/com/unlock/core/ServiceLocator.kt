@@ -38,4 +38,8 @@ object ServiceLocator {
     /** Authoritative protection check, independent of any loaded list. */
     fun isProtected(pkg: String): Boolean =
         SafetyCatalog.classify(pkg, SafetyCatalog.dynamicProtected(appContext)) == SafetyTier.PROTECTED
+
+    /** Current UI strings resolved from the chosen language (for non-Compose code like the engine). */
+    fun currentStrings(): Strings =
+        if (Prefs.language.value == "ru") Strings.ru() else Strings.en()
 }

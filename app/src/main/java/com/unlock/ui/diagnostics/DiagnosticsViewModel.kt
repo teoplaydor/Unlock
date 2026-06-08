@@ -43,7 +43,7 @@ class DiagnosticsViewModel : ViewModel() {
             while (true) {
                 delay(3000)
                 runCatching {
-                    val light = ServiceLocator.diagnostics.run()
+                    val light = ServiceLocator.diagnostics.run(ServiceLocator.currentStrings())
                     _state.update { st -> st.copy(report = mergeHealth(light, st.report?.battery)) }
                 }
             }
@@ -55,7 +55,7 @@ class DiagnosticsViewModel : ViewModel() {
             _state.update {
                 it.copy(loading = true, shizukuReady = ShizukuManager.isReady, gosPackage = ServiceLocator.samsungGosPackage())
             }
-            var report = ServiceLocator.diagnostics.run()
+            var report = ServiceLocator.diagnostics.run(ServiceLocator.currentStrings())
             var drainers = emptyList<DrainEntry>()
             var ram = emptyList<MemEntry>()
             if (ShizukuManager.isReady) {

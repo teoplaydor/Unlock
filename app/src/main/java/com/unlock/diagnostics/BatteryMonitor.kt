@@ -24,6 +24,8 @@ class BatteryMonitor(private val context: Context) {
             percent = percent,
             status = statusText(sticky?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1),
             health = healthText(sticky?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1) ?: -1),
+            statusCode = sticky?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1,
+            healthCode = sticky?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1) ?: -1,
             plugged = pluggedText(sticky?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) ?: -1),
             technology = sticky?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY),
             voltageMv = sticky?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0,
