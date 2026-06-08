@@ -47,7 +47,19 @@ class RunningViewModel : ViewModel() {
                 return@launch
             }
             val r = ServiceLocator.appActions.forceStop(pkg)
-            _state.update { it.copy(message = if (r.success) "Stopped $pkg" else "Failed: ${r.text.take(120)}") }
+            if (!r.success) _state.update { it.copy(message = "Failed: ${r.text.take(120)}") }
+            refresh()
+        }
+    }
+
+    fun sleep(pkg: String) {
+        viewModelScope.launch {
+            if (!ShizukuManager.isReady) {
+                _state.update { it.copy(message = "Sleep needs Shizuku.") }
+                return@launch
+            }
+            val r = ServiceLocator.appActions.sleep(pkg)
+            if (!r.success) _state.update { it.copy(message = "Failed: ${r.text.take(120)}") }
             refresh()
         }
     }

@@ -2,6 +2,7 @@ package com.unlock.ui.diagnostics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unlock.core.Prefs
 import com.unlock.core.ServiceLocator
 import com.unlock.data.DrainEntry
 import com.unlock.data.MemEntry
@@ -23,6 +24,7 @@ class DiagnosticsViewModel : ViewModel() {
         val drainers: List<DrainEntry> = emptyList(),
         val ramConsumers: List<MemEntry> = emptyList(),
         val gosPackage: String? = null,
+        val antiThrottleOn: Boolean = false,
         val shizukuReady: Boolean = false,
         val message: String? = null,
     )
@@ -31,6 +33,9 @@ class DiagnosticsViewModel : ViewModel() {
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            Prefs.antiThrottle.collect { on -> _state.update { it.copy(antiThrottleOn = on) } }
+        }
         refresh()
         // Live tick: refresh the cheap sensors automatically so the user never presses Refresh.
         // The heavy dumpsys lists (drain, RAM) stay from the last full refresh; SoH is preserved.
@@ -80,22 +85,22 @@ class DiagnosticsViewModel : ViewModel() {
         }
     }
 
-    /** Best-effort no-root anti-throttle: GOS off + low-power off + fixed-performance + thermal status. */
-    fun boostPerformance() {
+    /** Anti-throttle toggle: ON applies the no-root levers, OFF restores them. Persisted. */
+    fun setAntiThrottle(on: Boolean) {
         viewModelScope.launch {
             if (!ShizukuManager.isReady) {
-                _state.update { it.copy(message = "Performance boost needs Shizuku.") }
+                _state.update { it.copy(message = "Anti-throttle needs Shizuku.") }
                 return@launch
             }
-            _state.update { it.copy(message = "Applying performance levers…") }
-            val results = ServiceLocator.appActions.boostPerformance(ServiceLocator.samsungGosPackages())
+            val gos = ServiceLocator.samsungGosPackages()
+            val results = if (on) ServiceLocator.appActions.boostPerformance(gos)
+            else ServiceLocator.appActions.restorePerformance(gos)
+            Prefs.setAntiThrottle(on)
             val ok = results.count { it.success }
-            _state.update {
-                it.copy(
-                    message = "Applied $ok/${results.size} levers. Note: kernel/HAL throttling still applies on real heat, and these reset on reboot.",
-                    gosPackage = ServiceLocator.samsungGosPackage(),
-                )
+            if (on && ok == 0 && results.isNotEmpty()) {
+                _state.update { it.copy(message = "This device didn't accept the performance levers.") }
             }
+            _state.update { it.copy(gosPackage = ServiceLocator.samsungGosPackage()) }
         }
     }
 

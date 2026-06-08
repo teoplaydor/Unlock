@@ -117,6 +117,24 @@ class AppActions(private val context: Context) {
             ShizukuManager.exec("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "ignore")
         }
 
+    /** Undo stopAutostart: clear stopped-state, restore standby bucket and background appop. */
+    suspend fun restoreAutostart(pkg: String): ShellResult =
+        recorded(pkg, "Restore autostart", null) {
+            ShizukuManager.exec("am", "set-stopped-state", pkg, "false")
+            ShizukuManager.exec("am", "set-standby-bucket", pkg, "active")
+            ShizukuManager.exec("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "default")
+        }
+
+    /** Undo boostPerformance: re-enable GOS, drop fixed-performance, restore adaptive saver, reset thermal. */
+    suspend fun restorePerformance(gosPackages: List<String>): List<ShellResult> {
+        val out = mutableListOf<ShellResult>()
+        for (g in gosPackages) out += ShizukuManager.exec("pm", "enable", g)
+        out += ShizukuManager.exec("cmd", "power", "set-fixed-performance-mode-enabled", "false")
+        out += ShizukuManager.exec("cmd", "power", "set-adaptive-power-saver-enabled", "true")
+        out += ShizukuManager.exec("cmd", "thermalservice", "reset")
+        return out
+    }
+
     /**
      * Best-effort no-root performance levers: kill Samsung's software throttle (GOS), turn off
      * low-power / adaptive saver, pin the framework to fixed-performance, and clear the thermal

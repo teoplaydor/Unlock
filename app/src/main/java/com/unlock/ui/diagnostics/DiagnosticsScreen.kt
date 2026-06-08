@@ -12,6 +12,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +28,7 @@ import com.unlock.core.Format
 import com.unlock.data.DrainEntry
 import com.unlock.data.MemEntry
 import com.unlock.diagnostics.CpuCore
+import com.unlock.ui.components.MessageToast
 import com.unlock.diagnostics.DiagnosticsReport
 import com.unlock.ui.components.SeverityDot
 
@@ -43,37 +45,19 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel = viewModel()) {
             TextButton(onClick = vm::refresh) { Text(if (state.loading) "…" else "Refresh") }
         }
 
-        state.message?.let { msg ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(msg, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = vm::clearMessage) { Text("OK") }
-                }
-            }
-        }
-
-        state.gosPackage?.let { gos ->
-            SectionCard("Samsung performance throttling") {
-                Text(
-                    "Game Optimizing Service ($gos) is active — it caps performance for thousands of apps by name. Disabling it removes that cap (reversible).",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(Modifier.padding(4.dp))
-                FilledTonalButton(onClick = vm::disableGos, enabled = state.shizukuReady) {
-                    Text(if (state.shizukuReady) "Disable GOS throttling" else "Needs Shizuku")
-                }
-            }
-        }
+        MessageToast(state.message) { vm.clearMessage() }
 
         if (state.shizukuReady) {
             SectionCard("Performance (anti-throttle)") {
-                Text(
-                    "Turns off Samsung GOS + low-power mode and pins fixed-performance. Honest limit: " +
-                        "kernel/HAL throttling on real heat still applies (needs root), and these reset on reboot — re-apply as needed.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(Modifier.padding(4.dp))
-                FilledTonalButton(onClick = vm::boostPerformance) { Text("Boost performance") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Disables Samsung GOS + low-power mode and pins fixed-performance. Kernel/HAL throttling " +
+                            "on real heat still needs root, and some parts reset on reboot.",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Switch(checked = state.antiThrottleOn, onCheckedChange = { vm.setAntiThrottle(it) })
+                }
             }
         }
 

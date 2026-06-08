@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
 import com.unlock.data.AppInfo
 import com.unlock.ui.components.AppIcon
+import com.unlock.ui.components.MessageToast
 import com.unlock.ui.components.TagChip
 import com.unlock.ui.theme.DangerRed
 import com.unlock.ui.theme.WarnAmber
@@ -71,17 +73,7 @@ fun AppsScreen(vm: AppsViewModel = viewModel()) {
 
         FilterRow(state.filter, state.sort, onFilter = vm::setFilter, onSort = vm::setSort)
 
-        state.message?.let { msg ->
-            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(msg, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = vm::clearMessage) { Text("OK") }
-                }
-            }
-        }
+        MessageToast(state.message) { vm.clearMessage() }
 
         if (state.selected.isNotEmpty()) {
             SelectionBar(
@@ -107,11 +99,13 @@ fun AppsScreen(vm: AppsViewModel = viewModel()) {
                         selected = app.packageName in state.selected,
                         selectionMode = state.selected.isNotEmpty(),
                         busy = app.packageName in state.busy,
+                        shizukuReady = state.shizukuReady,
                         onClick = {
                             if (state.selected.isNotEmpty()) vm.toggleSelect(app.packageName)
                             else sheetApp = app
                         },
                         onLongClick = { vm.toggleSelect(app.packageName) },
+                        onToggle = { vm.toggleEnabled(app.packageName, app.isEnabled) },
                     )
                 }
             }
@@ -198,8 +192,10 @@ private fun AppRow(
     selected: Boolean,
     selectionMode: Boolean,
     busy: Boolean,
+    shizukuReady: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onToggle: () -> Unit,
 ) {
     val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface
     Row(
@@ -241,6 +237,8 @@ private fun AppRow(
         when {
             busy -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             selectionMode -> androidx.compose.material3.Checkbox(checked = selected, onCheckedChange = { onClick() })
+            shizukuReady && !app.isProtected ->
+                Switch(checked = app.isEnabled, onCheckedChange = { onToggle() })
         }
     }
 }

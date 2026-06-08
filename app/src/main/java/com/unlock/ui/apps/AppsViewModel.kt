@@ -121,6 +121,10 @@ class AppsViewModel : ViewModel() {
     fun sleep(pkg: String) = run("Put to sleep", pkg, guard = true) { actions.sleep(pkg) }
     fun clearData(pkg: String) = run("Data cleared", pkg, guard = true) { actions.clearData(pkg) }
 
+    /** Row Switch: flip enabled state. State reflects instantly (optimistic) on success. */
+    fun toggleEnabled(pkg: String, currentlyEnabled: Boolean) =
+        if (currentlyEnabled) disable(pkg) else enable(pkg)
+
     private fun isProtected(pkg: String): Boolean =
         _state.value.apps.firstOrNull { it.packageName == pkg }?.isProtected
             ?: ServiceLocator.isProtected(pkg)
@@ -159,7 +163,8 @@ class AppsViewModel : ViewModel() {
                 }
             }
             setBusy(pkg, false)
-            _state.update { it.copy(message = if (r.success) "$okVerb." else "Failed: ${r.text.take(160)}") }
+            // No notification on success — the row reflects the new state itself. Errors only.
+            if (!r.success) _state.update { it.copy(message = "$okVerb failed: ${r.text.take(140)}") }
         }
     }
 

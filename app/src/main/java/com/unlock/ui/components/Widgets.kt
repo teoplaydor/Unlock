@@ -27,6 +27,18 @@ import com.unlock.ui.theme.OkGreen
 import com.unlock.ui.theme.Teal
 import com.unlock.ui.theme.WarnAmber
 
+/** Shows a transient message as a bottom Toast (no layout shift), then clears it. */
+@Composable
+fun MessageToast(message: String?, onShown: () -> Unit) {
+    val context = LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(message) {
+        if (!message.isNullOrBlank()) {
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            onShown()
+        }
+    }
+}
+
 @Composable
 fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
