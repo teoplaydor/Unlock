@@ -2,6 +2,7 @@ package com.unlock.ui.autostart
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unlock.core.Prefs
 import com.unlock.core.ServiceLocator
 import com.unlock.shizuku.ShizukuManager
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +26,7 @@ class AutostartViewModel : ViewModel() {
     data class UiState(
         val loading: Boolean = true,
         val apps: List<AutostartApp> = emptyList(),
-        val expanded: Set<String> = emptySet(),
+        val stopped: Set<String> = emptySet(),
         val busy: Set<String> = emptySet(),
         val shizukuReady: Boolean = false,
         val message: String? = null,
@@ -37,6 +38,9 @@ class AutostartViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             ShizukuManager.state.collect { s -> _state.update { it.copy(shizukuReady = s == ShizukuManager.State.READY) } }
+        }
+        viewModelScope.launch {
+            Prefs.stoppedAutostart.collect { s -> _state.update { it.copy(stopped = s) } }
         }
         refresh()
     }
@@ -61,21 +65,8 @@ class AutostartViewModel : ViewModel() {
         }
     }
 
-    fun toggleExpand(pkg: String) = _state.update {
-        it.copy(expanded = if (pkg in it.expanded) it.expanded - pkg else it.expanded + pkg)
-    }
-
-    /** Reliable no-root autostart block (appops + restricted bucket + stopped-state). */
-    fun stopAutostart(app: AutostartApp) = act(app, "Autostart stopped for ${app.label}") {
-        ServiceLocator.appActions.stopAutostart(app.packageName)
-    }
-
-    /** Stronger: disable the whole app (reversible). */
-    fun disableApp(app: AutostartApp) = act(app, "Disabled ${app.label}") {
-        ServiceLocator.appActions.disable(app.packageName)
-    }
-
-    private fun act(app: AutostartApp, okMsg: String, block: suspend () -> com.unlock.shizuku.ShellResult) {
+    /** Toggle: stopped=true blocks autostart (appops+bucket+stopped-state); false restores it. */
+    fun setStopped(app: AutostartApp, stopped: Boolean) {
         viewModelScope.launch {
             if (app.isProtected) {
                 _state.update { it.copy(message = "Blocked — ${app.packageName} is a protected core package.") }
@@ -86,13 +77,14 @@ class AutostartViewModel : ViewModel() {
                 return@launch
             }
             _state.update { it.copy(busy = it.busy + app.packageName) }
-            val r = block()
-            _state.update {
-                it.copy(
-                    busy = it.busy - app.packageName,
-                    message = if (r.success) okMsg else "Failed: ${r.text.take(140)}",
-                )
+            val actions = ServiceLocator.appActions
+            val r = if (stopped) actions.stopAutostart(app.packageName) else actions.restoreAutostart(app.packageName)
+            if (r.success) {
+                Prefs.setStopped(app.packageName, stopped)
+            } else {
+                _state.update { it.copy(message = "Failed: ${r.text.take(140)}") }
             }
+            _state.update { it.copy(busy = it.busy - app.packageName) }
         }
     }
 

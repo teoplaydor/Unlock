@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.ui.components.AppIcon
+import com.unlock.ui.components.MessageToast
 import com.unlock.ui.components.TagChip
 
 @Composable
@@ -49,14 +50,7 @@ fun RunningScreen(vm: RunningViewModel = viewModel()) {
             IconButton(onClick = vm::refresh) { Icon(Icons.Filled.Refresh, contentDescription = "Refresh") }
         }
 
-        state.message?.let { msg ->
-            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(msg, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = vm::clearMessage) { Text("OK") }
-                }
-            }
-        }
+        MessageToast(state.message) { vm.clearMessage() }
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(state.processes, key = { it.processName }) { proc ->
@@ -73,8 +67,9 @@ fun RunningScreen(vm: RunningViewModel = viewModel()) {
                         }
                     }
                     if (state.shizukuReady) {
-                        IconButton(onClick = { vm.forceStop(proc.packageName) }) {
-                            Icon(Icons.Filled.Stop, contentDescription = "Force stop", tint = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = { vm.sleep(proc.packageName) }) { Text("Sleep") }
+                        TextButton(onClick = { vm.forceStop(proc.packageName) }) {
+                            Text("Stop", color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
