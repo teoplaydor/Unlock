@@ -99,6 +99,41 @@ class AppActions(private val context: Context) {
     suspend fun clearData(pkg: String): ShellResult =
         recorded(pkg, "Clear data", null) { ShizukuManager.exec("pm", "clear", pkg) }
 
+    /**
+     * The RELIABLE no-root way to stop an app autostarting on Samsung/stock: block background
+     * running + pin RESTRICTED bucket + force the stopped state. Operates at app level, so it
+     * never throws the "Shell cannot change component state" error that per-component disable does.
+     * Reversible.
+     */
+    suspend fun stopAutostart(pkg: String): ShellResult =
+        recorded(
+            pkg,
+            "Stop autostart",
+            listOf("sh", "-c", "cmd appops set $pkg RUN_ANY_IN_BACKGROUND default; am set-standby-bucket $pkg active"),
+        ) {
+            ShizukuManager.exec("am", "set-standby-bucket", pkg, "restricted")
+            ShizukuManager.exec("am", "set-stopped-state", pkg, "true")
+            // Last expression = the persistent background block; recorded() logs iff it succeeds.
+            ShizukuManager.exec("cmd", "appops", "set", pkg, "RUN_ANY_IN_BACKGROUND", "ignore")
+        }
+
+    /**
+     * Best-effort no-root performance levers: kill Samsung's software throttle (GOS), turn off
+     * low-power / adaptive saver, pin the framework to fixed-performance, and clear the thermal
+     * status apps react to. CANNOT override kernel/HAL hardware throttling (needs root) — honest
+     * limits surfaced in the UI. GOS re-enables on reboot, so re-apply.
+     */
+    suspend fun boostPerformance(gosPackages: List<String>): List<ShellResult> {
+        val out = mutableListOf<ShellResult>()
+        for (g in gosPackages) out += ShizukuManager.exec("pm", "disable-user", "--user", "0", g)
+        out += ShizukuManager.exec("cmd", "power", "set-mode", "0")
+        out += ShizukuManager.exec("cmd", "power", "set-adaptive-power-saver-enabled", "false")
+        out += ShizukuManager.exec("settings", "put", "global", "low_power", "0")
+        out += ShizukuManager.exec("cmd", "power", "set-fixed-performance-mode-enabled", "true")
+        out += ShizukuManager.exec("cmd", "thermalservice", "override-status", "0")
+        return out
+    }
+
     /** Self-grant the powerful perms we declared, once Shizuku is available. */
     suspend fun grantSelfPrivileges(): List<ShellResult> {
         val self = context.packageName

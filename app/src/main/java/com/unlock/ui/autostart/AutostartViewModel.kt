@@ -3,7 +3,6 @@ package com.unlock.ui.autostart
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unlock.core.ServiceLocator
-import com.unlock.data.BootEntry
 import com.unlock.shizuku.ShizukuManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,11 +12,21 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** One autostarting app (its boot receivers grouped under the parent package). */
+data class AutostartApp(
+    val packageName: String,
+    val label: String,
+    val isProtected: Boolean,
+    val receivers: List<String>,
+)
+
 class AutostartViewModel : ViewModel() {
 
     data class UiState(
         val loading: Boolean = true,
-        val entries: List<BootEntry> = emptyList(),
+        val apps: List<AutostartApp> = emptyList(),
+        val expanded: Set<String> = emptySet(),
+        val busy: Set<String> = emptySet(),
         val shizukuReady: Boolean = false,
         val message: String? = null,
     )
@@ -35,28 +44,55 @@ class AutostartViewModel : ViewModel() {
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
-            val entries = withContext(Dispatchers.Default) { ServiceLocator.appRepository.bootEntries() }
-            _state.update { it.copy(loading = false, entries = entries) }
+            val apps = withContext(Dispatchers.Default) {
+                ServiceLocator.appRepository.bootEntries()
+                    .groupBy { it.packageName }
+                    .map { (pkg, list) ->
+                        AutostartApp(
+                            packageName = pkg,
+                            label = list.first().label,
+                            isProtected = list.any { it.isProtected },
+                            receivers = list.map { it.receiverClass.substringAfterLast('.') }.distinct(),
+                        )
+                    }
+                    .sortedBy { it.label.lowercase() }
+            }
+            _state.update { it.copy(loading = false, apps = apps) }
         }
     }
 
-    fun toggleComponent(entry: BootEntry) {
+    fun toggleExpand(pkg: String) = _state.update {
+        it.copy(expanded = if (pkg in it.expanded) it.expanded - pkg else it.expanded + pkg)
+    }
+
+    /** Reliable no-root autostart block (appops + restricted bucket + stopped-state). */
+    fun stopAutostart(app: AutostartApp) = act(app, "Autostart stopped for ${app.label}") {
+        ServiceLocator.appActions.stopAutostart(app.packageName)
+    }
+
+    /** Stronger: disable the whole app (reversible). */
+    fun disableApp(app: AutostartApp) = act(app, "Disabled ${app.label}") {
+        ServiceLocator.appActions.disable(app.packageName)
+    }
+
+    private fun act(app: AutostartApp, okMsg: String, block: suspend () -> com.unlock.shizuku.ShellResult) {
         viewModelScope.launch {
-            // Disabling a protected core package's boot receiver can brick the device or kill
-            // emergency alerts. Re-enabling (turning back on) is always safe.
-            if (entry.isEnabledComponent && entry.isProtected) {
-                _state.update { it.copy(message = "Blocked — ${entry.packageName} is a protected core package.") }
+            if (app.isProtected) {
+                _state.update { it.copy(message = "Blocked — ${app.packageName} is a protected core package.") }
                 return@launch
             }
             if (!ShizukuManager.isReady) {
-                _state.update { it.copy(message = "Disabling autostart needs Shizuku.") }
+                _state.update { it.copy(message = "This needs Shizuku.") }
                 return@launch
             }
-            val actions = ServiceLocator.appActions
-            val r = if (entry.isEnabledComponent) actions.disableComponent(entry.packageName, entry.receiverClass)
-            else actions.enableComponent(entry.packageName, entry.receiverClass)
-            _state.update { it.copy(message = if (r.success) "Updated ${entry.label}" else "Failed: ${r.text.take(120)}") }
-            refresh()
+            _state.update { it.copy(busy = it.busy + app.packageName) }
+            val r = block()
+            _state.update {
+                it.copy(
+                    busy = it.busy - app.packageName,
+                    message = if (r.success) okMsg else "Failed: ${r.text.take(140)}",
+                )
+            }
         }
     }
 

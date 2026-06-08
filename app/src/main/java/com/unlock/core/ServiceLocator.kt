@@ -4,6 +4,7 @@ import android.content.Context
 import com.unlock.data.AppActions
 import com.unlock.data.AppRepository
 import com.unlock.data.BatteryForensicsRepository
+import com.unlock.data.MemoryRepository
 import com.unlock.data.RunningRepository
 import com.unlock.data.SafetyCatalog
 import com.unlock.data.SafetyTier
@@ -26,6 +27,9 @@ object ServiceLocator {
     val appActions: AppActions by lazy { AppActions(appContext) }
     val diagnostics: DiagnosticsEngine by lazy { DiagnosticsEngine(appContext) }
     val batteryForensics: BatteryForensicsRepository by lazy { BatteryForensicsRepository(appContext) }
+    val memoryRepository: MemoryRepository by lazy { MemoryRepository() }
+
+    fun samsungGosPackages(): List<String> = Samsung.allGamePackages(appContext)
 
     fun hasUsageAccess(): Boolean = Permissions.hasUsageAccess(appContext)
 
