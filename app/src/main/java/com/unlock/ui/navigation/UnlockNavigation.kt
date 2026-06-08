@@ -2,6 +2,7 @@ package com.unlock.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MonitorHeart
@@ -36,6 +37,7 @@ import com.unlock.ui.dashboard.DashboardScreen
 import com.unlock.ui.diagnostics.DiagnosticsScreen
 import com.unlock.ui.running.RunningScreen
 import com.unlock.ui.settings.SettingsScreen
+import com.unlock.ui.tweaks.TweaksScreen
 
 enum class Destination(val route: String, val icon: ImageVector) {
     Dashboard("dashboard", Icons.Filled.Dashboard),
@@ -43,6 +45,7 @@ enum class Destination(val route: String, val icon: ImageVector) {
     Running("running", Icons.Filled.Memory),
     Autostart("autostart", Icons.Filled.RestartAlt),
     Diagnostics("diagnostics", Icons.Filled.MonitorHeart),
+    Tweaks("tweaks", Icons.Filled.AutoAwesome),
     Settings("settings", Icons.Filled.Settings);
 
     fun title(s: Strings): String = when (this) {
@@ -51,11 +54,12 @@ enum class Destination(val route: String, val icon: ImageVector) {
         Running -> s.navRunning
         Autostart -> s.navAutostart
         Diagnostics -> s.navHealth
+        Tweaks -> s.navTweaks
         Settings -> s.navSettings
     }
 
     companion object {
-        val bottom = listOf(Dashboard, Apps, Running, Autostart, Diagnostics)
+        val bottom = listOf(Dashboard, Apps, Running, Autostart, Diagnostics, Tweaks)
         fun fromRoute(route: String?): Destination? = entries.firstOrNull { it.route == route }
     }
 }
@@ -118,6 +122,7 @@ fun UnlockRoot() {
                 composable(Destination.Running.route) { RunningScreen() }
                 composable(Destination.Autostart.route) { AutostartScreen() }
                 composable(Destination.Diagnostics.route) { DiagnosticsScreen() }
+                composable(Destination.Tweaks.route) { TweaksScreen() }
                 composable(Destination.Settings.route) { SettingsScreen() }
             }
         }

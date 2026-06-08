@@ -28,6 +28,7 @@ object ServiceLocator {
     val diagnostics: DiagnosticsEngine by lazy { DiagnosticsEngine(appContext) }
     val batteryForensics: BatteryForensicsRepository by lazy { BatteryForensicsRepository(appContext) }
     val memoryRepository: MemoryRepository by lazy { MemoryRepository() }
+    val tweaksRepository: com.unlock.data.TweaksRepository by lazy { com.unlock.data.TweaksRepository() }
 
     fun samsungGosPackages(): List<String> = Samsung.allGamePackages(appContext)
 
