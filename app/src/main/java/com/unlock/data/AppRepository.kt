@@ -60,12 +60,16 @@ class AppRepository(private val context: Context) {
             Intent.ACTION_MY_PACKAGE_REPLACED,
         )
         val dynamicProtected = SafetyCatalog.dynamicProtected(context)
+        val enabledPkgs = enabledPackages()
         val out = mutableListOf<BootEntry>()
         for (action in actions) {
             @Suppress("DEPRECATION")
             val resolved = pm.queryBroadcastReceivers(Intent(action), PackageManager.GET_DISABLED_COMPONENTS)
             for (ri in resolved) {
                 val act = ri.activityInfo ?: continue
+                // A disabled app can't autostart, so don't list it here.
+                if (act.packageName !in enabledPkgs) continue
+                val tier = SafetyCatalog.classify(act.packageName, dynamicProtected)
                 out += BootEntry(
                     packageName = act.packageName,
                     label = runCatching { act.applicationInfo?.let { pm.getApplicationLabel(it).toString() } }
@@ -73,13 +77,20 @@ class AppRepository(private val context: Context) {
                     receiverClass = act.name,
                     action = action,
                     isEnabledComponent = act.isEnabled,
-                    isProtected = SafetyCatalog.classify(act.packageName, dynamicProtected) == SafetyTier.PROTECTED,
+                    isProtected = tier == SafetyTier.PROTECTED,
+                    safetyTier = tier,
                 )
             }
         }
         return out.distinctBy { it.packageName + it.receiverClass + it.action }
             .sortedBy { it.label.lowercase() }
     }
+
+    /** Packages whose application is currently enabled (a disabled app can't autostart). */
+    private fun enabledPackages(): Set<String> = runCatching {
+        @Suppress("DEPRECATION")
+        pm.getInstalledApplications(0).filter { it.enabled }.map { it.packageName }.toSet()
+    }.getOrDefault(emptySet())
 
     /** App / data / cache bytes. Needs Usage Access; returns Triple(-1,-1,-1) otherwise. */
     suspend fun sizesOf(app: AppInfo): Triple<Long, Long, Long> = withContext(Dispatchers.IO) {

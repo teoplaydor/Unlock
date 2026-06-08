@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unlock.core.Format
 import com.unlock.core.LocalStrings
+import com.unlock.core.batteryHealthText
 import com.unlock.diagnostics.DiagnosticsReport
 import com.unlock.shizuku.ShizukuManager
 import com.unlock.ui.components.SeverityDot
@@ -64,7 +65,7 @@ fun DashboardScreen(
         state.report?.let { report ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 report.battery?.let {
-                    StatTile(Icons.Filled.BatteryFull, s.tBattery, "${it.percent}%", "${it.temperatureC.toInt()}°C • ${it.health}", Modifier.weight(1f))
+                    StatTile(Icons.Filled.BatteryFull, s.tBattery, "${it.percent}%", "${it.temperatureC.toInt()}°C • ${batteryHealthText(it.healthCode, s)}", Modifier.weight(1f))
                 }
                 report.maxTempC?.let {
                     StatTile(Icons.Filled.DeviceThermostat, s.tPeakTemp, "${it.toInt()}°C", "${report.thermals.size} ${s.sensorsSuffix}", Modifier.weight(1f))

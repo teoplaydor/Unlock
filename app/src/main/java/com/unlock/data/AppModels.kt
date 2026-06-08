@@ -48,6 +48,7 @@ data class BootEntry(
     val action: String,
     val isEnabledComponent: Boolean,
     val isProtected: Boolean = false,
+    val safetyTier: SafetyTier = SafetyTier.NORMAL,
 )
 
 /** Standby bucket constants mirrored so we don't pull UsageStatsManager into the UI. */

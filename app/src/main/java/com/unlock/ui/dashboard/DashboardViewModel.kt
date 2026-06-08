@@ -37,7 +37,7 @@ class DashboardViewModel : ViewModel() {
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true, hasUsageAccess = ServiceLocator.hasUsageAccess()) }
-            val report = ServiceLocator.diagnostics.run()
+            val report = ServiceLocator.diagnostics.run(ServiceLocator.currentStrings())
             val apps = ServiceLocator.appRepository.loadApps()
             _state.update {
                 it.copy(

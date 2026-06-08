@@ -66,8 +66,14 @@ fun AutostartScreen(vm: AutostartViewModel = viewModel()) {
                             color = if (stopped) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         )
-                        if (app.isProtected) {
-                            Row(modifier = Modifier.padding(top = 2.dp)) { TagChip(s.tagCore, MaterialTheme.colorScheme.error) }
+                        val safety = when (app.safetyTier) {
+                            com.unlock.data.SafetyTier.PROTECTED -> s.asDontTouch to MaterialTheme.colorScheme.error
+                            com.unlock.data.SafetyTier.DEBLOAT_SAFE -> s.asSafeToStop to com.unlock.ui.theme.OkGreen
+                            com.unlock.data.SafetyTier.CAUTION -> s.asUseCaution to com.unlock.ui.theme.WarnAmber
+                            else -> null
+                        }
+                        safety?.let { (txt, col) ->
+                            Row(modifier = Modifier.padding(top = 2.dp)) { TagChip(txt, col) }
                         }
                     }
                     if (app.packageName in state.busy) {
