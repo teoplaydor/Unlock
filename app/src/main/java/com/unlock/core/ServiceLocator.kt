@@ -1,5 +1,6 @@
 package com.unlock.core
 
+import android.app.ActivityManager
 import android.content.Context
 import com.unlock.data.AppActions
 import com.unlock.data.AppRepository
@@ -33,6 +34,14 @@ object ServiceLocator {
     fun samsungGosPackages(): List<String> = Samsung.allGamePackages(appContext)
 
     fun hasUsageAccess(): Boolean = Permissions.hasUsageAccess(appContext)
+
+    /** Currently-available RAM in bytes (for before/after "freed memory" feedback). */
+    fun availMemBytes(): Long = runCatching {
+        val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val mi = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(mi)
+        mi.availMem
+    }.getOrDefault(0L)
 
     fun samsungGosPackage(): String? = Samsung.activeGosPackage(appContext)
 

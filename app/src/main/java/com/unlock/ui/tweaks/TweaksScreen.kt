@@ -1,5 +1,7 @@
 package com.unlock.ui.tweaks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,15 +12,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,6 +36,9 @@ import com.unlock.core.LocalStrings
 import com.unlock.core.Prefs
 import com.unlock.data.TweakKind
 import com.unlock.ui.components.MessageToast
+import com.unlock.ui.theme.DangerRed
+import com.unlock.ui.theme.OkGreen
+import com.unlock.ui.theme.WarnAmber
 
 @Composable
 fun TweaksScreen(vm: TweaksViewModel = viewModel()) {
@@ -49,9 +61,18 @@ fun TweaksScreen(vm: TweaksViewModel = viewModel()) {
                 s.tweaksNeedShizuku,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 6.dp),
+                modifier = Modifier.padding(bottom = 4.dp),
             )
         }
+
+        OutlinedTextField(
+            value = state.query,
+            onValueChange = vm::setQuery,
+            placeholder = { Text(s.tweaksSearch) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             state.byCategory.forEach { (category, rows) ->
@@ -68,6 +89,7 @@ fun TweaksScreen(vm: TweaksViewModel = viewModel()) {
                     TweakRow(
                         title = row.tweak.title(ru),
                         desc = row.tweak.desc(ru),
+                        risk = row.tweak.risk,
                         kind = row.tweak.kind,
                         isOn = row.isOn,
                         busy = row.tweak.id in state.busy,
@@ -85,6 +107,7 @@ fun TweaksScreen(vm: TweaksViewModel = viewModel()) {
 private fun TweakRow(
     title: String,
     desc: String,
+    risk: String,
     kind: TweakKind,
     isOn: Boolean?,
     busy: Boolean,
@@ -97,6 +120,10 @@ private fun TweakRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier = Modifier.size(10.dp).clip(CircleShape).background(riskColor(risk)),
+        )
+        Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             if (desc.isNotBlank()) {
@@ -118,4 +145,11 @@ private fun TweakRow(
             else -> FilledTonalButton(onClick = onAction, enabled = enabled) { Text(s.tweaksApply) }
         }
     }
+}
+
+private fun riskColor(risk: String): Color = when (risk.lowercase()) {
+    "safe" -> OkGreen
+    "caution" -> WarnAmber
+    "risky", "risk", "dangerous" -> DangerRed
+    else -> WarnAmber
 }

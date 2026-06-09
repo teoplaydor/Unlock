@@ -168,6 +168,11 @@ data class Strings(
     val navTweaks: String,
     val tweaksApply: String,
     val tweaksNeedShizuku: String,
+    val runStoppedFmt: String,
+    val runSleptFmt: String,
+    val tweaksSearch: String,
+    val actStopAutostart: String,
+    val noData: String,
 ) {
     companion object {
         fun en() = Strings(
@@ -334,6 +339,11 @@ data class Strings(
             navTweaks = "Tweaks",
             tweaksApply = "Apply",
             tweaksNeedShizuku = "Connect Shizuku to use these features.",
+            runStoppedFmt = "Stopped · freed %s",
+            runSleptFmt = "Slept · freed %s",
+            tweaksSearch = "Search tweaks",
+            actStopAutostart = "No autostart",
+            noData = "No data (needs Shizuku + Usage access)",
         )
 
         fun ru() = Strings(
@@ -500,6 +510,11 @@ data class Strings(
             navTweaks = "Фишки",
             tweaksApply = "Применить",
             tweaksNeedShizuku = "Подключите Shizuku, чтобы пользоваться этими фишками.",
+            runStoppedFmt = "Остановлено · освобождено %s",
+            runSleptFmt = "Усыплено · освобождено %s",
+            tweaksSearch = "Поиск фишек",
+            actStopAutostart = "Без автозап.",
+            noData = "Нет данных (нужен Shizuku + Доступ к использованию)",
         )
     }
 }

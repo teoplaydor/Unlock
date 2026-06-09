@@ -68,8 +68,8 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel = viewModel()) {
         val report = state.report ?: return@Column
 
         FindingsSection(report)
-        if (state.shizukuReady && state.drainers.isNotEmpty()) DrainSection(state.drainers)
-        if (state.shizukuReady && state.ramConsumers.isNotEmpty()) RamSection(state.ramConsumers)
+        if (state.shizukuReady) RamSection(state.ramConsumers)
+        if (state.shizukuReady) DrainSection(state.drainers)
         report.battery?.let { BatterySection(it) }
         ThermalSection(report)
         CpuSection(report)
@@ -135,6 +135,9 @@ private fun BatterySection(b: com.unlock.diagnostics.BatterySnapshot) {
 private fun DrainSection(drainers: List<DrainEntry>) {
     val s = LocalStrings.current
     SectionCard(String.format(s.topDrainFmt, drainers.size)) {
+        if (drainers.isEmpty()) {
+            Text(s.noData, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        }
         drainers.forEach { d ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
                 Text(
@@ -154,6 +157,9 @@ private fun DrainSection(drainers: List<DrainEntry>) {
 private fun RamSection(items: List<MemEntry>) {
     val s = LocalStrings.current
     SectionCard(String.format(s.topRamFmt, items.size)) {
+        if (items.isEmpty()) {
+            Text(s.noData, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        }
         items.forEach { e ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
                 Text(

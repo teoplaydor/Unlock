@@ -22,13 +22,21 @@ class TweaksViewModel : ViewModel() {
         val loading: Boolean = true,
         val rows: List<Row> = emptyList(),
         val busy: Set<String> = emptySet(),
+        val query: String = "",
         val shizukuReady: Boolean = false,
         val deviceLabel: String = DeviceInfo.label,
         val message: String? = null,
     ) {
         val byCategory: List<Pair<String, List<Row>>>
-            get() = rows.groupBy { it.tweak.category }.toList()
+            get() = rows.filter { r ->
+                query.isBlank() ||
+                    r.tweak.title.contains(query, true) || r.tweak.titleRu.contains(query, true) ||
+                    r.tweak.category.contains(query, true) ||
+                    r.tweak.desc.contains(query, true) || r.tweak.descRu.contains(query, true)
+            }.groupBy { it.tweak.category }.toList()
     }
+
+    fun setQuery(q: String) = _state.update { it.copy(query = q) }
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
