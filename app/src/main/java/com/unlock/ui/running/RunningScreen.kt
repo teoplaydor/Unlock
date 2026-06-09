@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -69,9 +70,15 @@ fun RunningScreen(vm: RunningViewModel = viewModel()) {
                         }
                     }
                     if (state.shizukuReady) {
-                        TextButton(onClick = { vm.sleep(proc.packageName) }) { Text(s.actSleep) }
-                        TextButton(onClick = { vm.forceStop(proc.packageName) }) {
-                            Text(s.actStop, color = MaterialTheme.colorScheme.error)
+                        val cp = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        TextButton(onClick = { vm.stopAutostart(proc.packageName) }, contentPadding = cp) {
+                            Text(s.actStopAutostart, style = MaterialTheme.typography.labelMedium)
+                        }
+                        TextButton(onClick = { vm.sleep(proc.packageName) }, contentPadding = cp) {
+                            Text(s.actSleep, style = MaterialTheme.typography.labelMedium)
+                        }
+                        TextButton(onClick = { vm.forceStop(proc.packageName) }, contentPadding = cp) {
+                            Text(s.actStop, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }

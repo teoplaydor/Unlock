@@ -2,7 +2,9 @@ package com.unlock.ui.running
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unlock.core.Format
 import com.unlock.core.ServiceLocator
+import kotlinx.coroutines.delay
 import com.unlock.data.RunningProcess
 import com.unlock.shizuku.ShizukuManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,26 +42,37 @@ class RunningViewModel : ViewModel() {
         }
     }
 
-    fun forceStop(pkg: String) {
-        viewModelScope.launch {
-            if (!ShizukuManager.isReady) {
-                _state.update { it.copy(message = "Force-stop needs Shizuku.") }
-                return@launch
-            }
-            val r = ServiceLocator.appActions.forceStop(pkg)
-            if (!r.success) _state.update { it.copy(message = "Failed: ${r.text.take(120)}") }
-            refresh()
-        }
+    fun forceStop(pkg: String) = act {
+        val before = ServiceLocator.availMemBytes()
+        val r = ServiceLocator.appActions.forceStop(pkg)
+        delay(600)
+        val freed = (ServiceLocator.availMemBytes() - before).coerceAtLeast(0)
+        if (r.success) String.format(ServiceLocator.currentStrings().runStoppedFmt, Format.bytes(freed))
+        else "Failed: ${r.text.take(120)}"
     }
 
-    fun sleep(pkg: String) {
+    fun sleep(pkg: String) = act {
+        val before = ServiceLocator.availMemBytes()
+        val r = ServiceLocator.appActions.sleep(pkg)
+        delay(600)
+        val freed = (ServiceLocator.availMemBytes() - before).coerceAtLeast(0)
+        if (r.success) String.format(ServiceLocator.currentStrings().runSleptFmt, Format.bytes(freed))
+        else "Failed: ${r.text.take(120)}"
+    }
+
+    fun stopAutostart(pkg: String) = act {
+        val r = ServiceLocator.appActions.stopAutostart(pkg)
+        if (r.success) ServiceLocator.currentStrings().autostartStopped else "Failed: ${r.text.take(120)}"
+    }
+
+    private fun act(block: suspend () -> String) {
         viewModelScope.launch {
             if (!ShizukuManager.isReady) {
-                _state.update { it.copy(message = "Sleep needs Shizuku.") }
+                _state.update { it.copy(message = ServiceLocator.currentStrings().tweaksNeedShizuku) }
                 return@launch
             }
-            val r = ServiceLocator.appActions.sleep(pkg)
-            if (!r.success) _state.update { it.copy(message = "Failed: ${r.text.take(120)}") }
+            val msg = block()
+            _state.update { it.copy(message = msg) }
             refresh()
         }
     }
