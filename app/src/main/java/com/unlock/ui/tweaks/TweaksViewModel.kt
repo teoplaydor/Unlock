@@ -105,7 +105,9 @@ class TweaksViewModel : ViewModel() {
                 _state.update { it.copy(message = ServiceLocator.currentStrings().tweaksNeedShizuku) }
                 return@launch
             }
+            setBusy("profile_${p.id}", true)
             val r = repo.run(if (apply) p.applyCmd else p.undoCmd)
+            setBusy("profile_${p.id}", false)
             _state.update { it.copy(message = if (r.success) "OK" else "Failed: ${r.text.take(120)}") }
             refresh()
         }
@@ -137,6 +139,7 @@ class TweaksViewModel : ViewModel() {
                 return@launch
             }
             setBusy(t.id, true)
+            _state.update { it.copy(message = ServiceLocator.currentStrings().applying) }
             val r = repo.apply(t)
             setBusy(t.id, false)
             _state.update { it.copy(message = if (r.success) "Done." else "Failed: ${r.text.take(120)}") }

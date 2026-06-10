@@ -175,6 +175,7 @@ data class Strings(
     val noData: String,
     val profilesTitle: String,
     val profileRevert: String,
+    val applying: String,
 ) {
     companion object {
         fun en() = Strings(
@@ -348,6 +349,7 @@ data class Strings(
             noData = "No data (needs Shizuku + Usage access)",
             profilesTitle = "One-tap profiles",
             profileRevert = "Revert",
+            applying = "Applying…",
         )
 
         fun ru() = Strings(
@@ -521,6 +523,7 @@ data class Strings(
             noData = "Нет данных (нужен Shizuku + Доступ к использованию)",
             profilesTitle = "Профили в один тап",
             profileRevert = "Откатить",
+            applying = "Применяю…",
         )
     }
 }
