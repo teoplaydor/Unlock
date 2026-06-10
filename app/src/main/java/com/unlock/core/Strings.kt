@@ -173,6 +173,8 @@ data class Strings(
     val tweaksSearch: String,
     val actStopAutostart: String,
     val noData: String,
+    val profilesTitle: String,
+    val profileRevert: String,
 ) {
     companion object {
         fun en() = Strings(
@@ -344,6 +346,8 @@ data class Strings(
             tweaksSearch = "Search tweaks",
             actStopAutostart = "No autostart",
             noData = "No data (needs Shizuku + Usage access)",
+            profilesTitle = "One-tap profiles",
+            profileRevert = "Revert",
         )
 
         fun ru() = Strings(
@@ -515,6 +519,8 @@ data class Strings(
             tweaksSearch = "Поиск фишек",
             actStopAutostart = "Без автозап.",
             noData = "Нет данных (нужен Shizuku + Доступ к использованию)",
+            profilesTitle = "Профили в один тап",
+            profileRevert = "Откатить",
         )
     }
 }
