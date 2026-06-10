@@ -1,6 +1,6 @@
 package com.unlock.data
 
-enum class TweakKind { TOGGLE, ACTION }
+enum class TweakKind { TOGGLE, ACTION, SLIDER }
 
 /**
  * One no-root "special feature": a hidden setting / tweak applied by running [applyCmd] as the
@@ -21,6 +21,13 @@ data class Tweak(
     val onValue: String? = null,
     val oem: String = "all",
     val risk: String = "safe",
+    // SLIDER only: applyCmd must contain "{v}" which is replaced with the chosen value.
+    val min: Float = 0f,
+    val max: Float = 1f,
+    val step: Float = 1f,
+    val default: Float = 0f,
+    val unitLabel: String = "",
+    val displayDivide: Float = 1f,
 ) {
     fun title(ru: Boolean): String = if (ru && titleRu.isNotBlank()) titleRu else title
     fun desc(ru: Boolean): String = if (ru && descRu.isNotBlank()) descRu else desc

@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unlock.core.ServiceLocator
 import com.unlock.data.DeviceInfo
+import com.unlock.data.Profile
+import com.unlock.data.SliderTweaks
 import com.unlock.data.Tweak
 import com.unlock.data.TweakKind
 import com.unlock.data.TweaksCatalog
@@ -16,7 +18,7 @@ import kotlinx.coroutines.launch
 
 class TweaksViewModel : ViewModel() {
 
-    data class Row(val tweak: Tweak, val isOn: Boolean?)
+    data class Row(val tweak: Tweak, val isOn: Boolean? = null, val value: Float? = null)
 
     data class UiState(
         val loading: Boolean = true,
@@ -54,19 +56,58 @@ class TweaksViewModel : ViewModel() {
 
     fun refresh() {
         viewModelScope.launch {
-            val applicable = TweaksCatalog.all.filter { DeviceInfo.applies(it.oem) }
-            // Show the whole list instantly; toggle states hydrate in the background so a
-            // device with 100+ tweaks doesn't block on sequential `settings get` reads.
+            val applicable = (SliderTweaks.all + TweaksCatalog.all).filter { DeviceInfo.applies(it.oem) }
+            // Show the whole list instantly; states hydrate in the background so a device with
+            // 100+ tweaks doesn't block on sequential `settings get` reads.
             _state.update { st ->
                 val prev = st.rows.associateBy { it.tweak.id }
-                st.copy(loading = false, rows = applicable.map { Row(it, prev[it.id]?.isOn) })
+                st.copy(loading = false, rows = applicable.map { Row(it, prev[it.id]?.isOn, prev[it.id]?.value) })
             }
             if (ShizukuManager.isReady) {
-                applicable.filter { it.kind == TweakKind.TOGGLE && it.readCmd != null }.forEach { t ->
-                    val on = repo.isOn(t)
-                    _state.update { st -> st.copy(rows = st.rows.map { if (it.tweak.id == t.id) it.copy(isOn = on) else it }) }
+                applicable.forEach { t ->
+                    when (t.kind) {
+                        TweakKind.TOGGLE -> if (t.readCmd != null) {
+                            val on = repo.isOn(t)
+                            _state.update { st -> st.copy(rows = st.rows.map { if (it.tweak.id == t.id) it.copy(isOn = on) else it }) }
+                        }
+                        TweakKind.SLIDER -> {
+                            val v = repo.readValue(t)?.let { it / t.displayDivide }
+                            _state.update { st -> st.copy(rows = st.rows.map { if (it.tweak.id == t.id) it.copy(value = v) else it }) }
+                        }
+                        else -> {}
+                    }
                 }
             }
+        }
+    }
+
+    fun setSlider(t: Tweak, value: Float) {
+        viewModelScope.launch {
+            if (!ShizukuManager.isReady) {
+                _state.update { it.copy(message = ServiceLocator.currentStrings().tweaksNeedShizuku) }
+                return@launch
+            }
+            setBusy(t.id, true)
+            val r = repo.setValue(t, value)
+            setBusy(t.id, false)
+            _state.update { st ->
+                st.copy(
+                    rows = st.rows.map { if (it.tweak.id == t.id) it.copy(value = value) else it },
+                    message = if (r.success) null else "Failed: ${r.text.take(120)}",
+                )
+            }
+        }
+    }
+
+    fun applyProfile(p: Profile, apply: Boolean) {
+        viewModelScope.launch {
+            if (!ShizukuManager.isReady) {
+                _state.update { it.copy(message = ServiceLocator.currentStrings().tweaksNeedShizuku) }
+                return@launch
+            }
+            val r = repo.run(if (apply) p.applyCmd else p.undoCmd)
+            _state.update { it.copy(message = if (r.success) "OK" else "Failed: ${r.text.take(120)}") }
+            refresh()
         }
     }
 

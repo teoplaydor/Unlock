@@ -50,4 +50,26 @@ class TweaksRepository {
         t.undoCmd?.let { ShizukuManager.exec("sh", "-c", it) } ?: ShellResult(false, "", "no undo")
 
     suspend fun setEnabled(t: Tweak, enabled: Boolean): ShellResult = if (enabled) apply(t) else undo(t)
+
+    /** Reads the current numeric value of a SLIDER tweak. */
+    suspend fun readValue(t: Tweak): Float? {
+        val read = t.readCmd ?: return null
+        if (!ShizukuManager.isReady) return null
+        val r = ShizukuManager.exec("sh", "-c", read)
+        if (!r.success) return null
+        return r.output.trim().substringAfterLast(':').trim().toFloatOrNull()
+    }
+
+    /** Applies a SLIDER value (substitutes {v} in applyCmd). */
+    suspend fun setValue(t: Tweak, value: Float): ShellResult {
+        val cmd = t.applyCmd.replace("{v}", formatValue(value, t.step))
+        return ShizukuManager.exec("sh", "-c", cmd)
+    }
+
+    /** Runs an arbitrary compound command (used by profiles). */
+    suspend fun run(cmd: String): ShellResult = ShizukuManager.exec("sh", "-c", cmd)
+
+    private fun formatValue(v: Float, step: Float): String =
+        if (step >= 1f) v.toInt().toString()
+        else (Math.round(v * 100f) / 100f).toString().trimEnd('0').trimEnd('.')
 }
