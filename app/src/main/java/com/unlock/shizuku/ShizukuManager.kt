@@ -7,6 +7,8 @@ import android.os.IBinder
 import android.util.Log
 import com.unlock.BuildConfig
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -142,11 +144,16 @@ object ShizukuManager {
 
     private val failureRegex = Regex("^(Failure|Failed|\\[Error\\]|Error:|Exception)", RegexOption.IGNORE_CASE)
 
-    /** Execute an argv command through the privileged service. */
+    /**
+     * Execute an argv command through the privileged service. The binder call is BLOCKING and can
+     * take minutes (e.g. `cmd package compile -a`), so it MUST run off the main thread — callers
+     * use viewModelScope (Main), and without this the UI would ANR ("Unlock isn't responding").
+     */
     suspend fun exec(vararg command: String): ShellResult {
         val svc = service() ?: return ShellResult(false, "", "Shizuku not ready")
         return try {
-            parseResult(svc.execute(command))
+            val raw = withContext(Dispatchers.IO) { svc.execute(command) }
+            parseResult(raw)
         } catch (t: Throwable) {
             ShellResult(false, "", t.message)
         }

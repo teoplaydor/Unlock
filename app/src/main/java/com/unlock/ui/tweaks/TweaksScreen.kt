@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -87,10 +88,14 @@ fun TweaksScreen(vm: TweaksViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         )
 
+        if (state.busy.isNotEmpty()) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp))
+        }
+
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             if (state.query.isBlank()) {
                 item(key = "profiles") {
-                    ProfilesSection(ru = ru, enabled = state.shizukuReady) { p, apply -> vm.applyProfile(p, apply) }
+                    ProfilesSection(ru = ru, enabled = state.shizukuReady, busyIds = state.busy) { p, apply -> vm.applyProfile(p, apply) }
                 }
             }
             state.byCategory.forEach { (category, rows) ->
@@ -127,7 +132,7 @@ fun TweaksScreen(vm: TweaksViewModel = viewModel()) {
 }
 
 @Composable
-private fun ProfilesSection(ru: Boolean, enabled: Boolean, onApply: (Profile, Boolean) -> Unit) {
+private fun ProfilesSection(ru: Boolean, enabled: Boolean, busyIds: Set<String>, onApply: (Profile, Boolean) -> Unit) {
     val s = LocalStrings.current
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -146,9 +151,17 @@ private fun ProfilesSection(ru: Boolean, enabled: Boolean, onApply: (Profile, Bo
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     )
-                    Row(modifier = Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = { onApply(p, true) }, enabled = enabled) { Text(s.tweaksApply) }
-                        OutlinedButton(onClick = { onApply(p, false) }, enabled = enabled) { Text(s.profileRevert) }
+                    if ("profile_${p.id}" in busyIds) {
+                        Row(modifier = Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(s.applying, style = MaterialTheme.typography.bodySmall)
+                        }
+                    } else {
+                        Row(modifier = Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilledTonalButton(onClick = { onApply(p, true) }, enabled = enabled) { Text(s.tweaksApply) }
+                            OutlinedButton(onClick = { onApply(p, false) }, enabled = enabled) { Text(s.profileRevert) }
+                        }
                     }
                 }
             }
