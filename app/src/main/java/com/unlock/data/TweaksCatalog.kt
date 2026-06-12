@@ -586,7 +586,7 @@ object TweaksCatalog {
             desc = "Disables the left-edge back gesture (stops accidental back when opening hamburger menus). Gesture mode only.", descRu = "Отключает жест Назад с левого края (убирает случайный Назад при открытии меню-гамбургеров). Только в жестовом режиме.",
             kind = TweakKind.TOGGLE, oem = "all", risk = "safe",
             applyCmd = "settings put secure back_gesture_inset_scale_left 0",
-            undoCmd = "settings put secure back_gesture_inset_scale_left default",
+            undoCmd = "settings delete secure back_gesture_inset_scale_left",
             readCmd = "settings get secure back_gesture_inset_scale_left", onValue = "0",
         ),
         Tweak(

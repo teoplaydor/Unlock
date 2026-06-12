@@ -33,9 +33,16 @@ pressure, background bloat) and what's draining the battery.
   (force-stop, sleep, disable, clear data, uninstall for user 0, restore).
 - **Running** — what's actually alive (via `dumpsys` over Shizuku), one-tap force-stop.
 - **Autostart** — every app that registers a boot receiver, with per-receiver on/off switches.
-- **Diagnostics** — battery voltage/current/temperature, thermal sensors, per-core CPU clocks
-  vs hardware max (throttle detection), governor, memory, storage, and plain-language findings.
-- **Settings** — guided Shizuku onboarding, Usage Access, self-grant of extra privileges, safety notes.
+- **Diagnostics** — battery voltage/current/temperature + State of Health (Shizuku), thermal sensors,
+  per-core CPU clocks vs hardware max (throttle detection), governor, memory, storage, top RAM
+  consumers, per-app battery drain, and plain-language "why it might be slow" findings.
+- **Special Features (Tweaks)** — 140+ no-root tweaks across Display, Performance, Battery, UI,
+  Network, Sound, Per-app and OEM-specific (Samsung/Xiaomi/Pixel…), auto-gated to your device.
+  Toggles, **sliders** (animation speed, font, vibration, screen timeout), and one-tap
+  **Performance / Battery-saver profiles**. Search + colour-coded risk; long ops show a progress bar.
+- **Languages** — full English + Russian, switchable in Settings (instant, no restart).
+- **Settings** — guided Shizuku onboarding, Usage Access, self-grant of extra privileges, action log
+  with one-tap undo, safety notes.
 
 ## How the privileged actions work
 
@@ -48,8 +55,9 @@ When Shizuku is connected, Unlock binds a tiny user-service that runs as the **s
 | Restore a removed system app | `cmd package install-existing <pkg>` |
 | Disable (reversible) | `pm disable-user --user 0 <pkg>` |
 | Force-stop | `am force-stop <pkg>` |
-| Sleep | `am force-stop` + `am set-standby-bucket <pkg> restricted` |
-| Disable an autostart receiver | `pm disable <pkg>/<receiver>` |
+| Sleep | `am force-stop` + `am set-standby-bucket <pkg> restricted` + `cmd appops set <pkg> RUN_ANY_IN_BACKGROUND ignore` |
+| Stop autostart (no-root, works on Samsung) | `cmd appops set <pkg> RUN_ANY_IN_BACKGROUND ignore` + `am set-standby-bucket <pkg> restricted` + `am set-stopped-state <pkg> true` |
+| Tweak / hidden setting | `settings put …` / `cmd …` / `device_config put …` (143-tweak catalog) |
 
 ## Set up Shizuku (no root)
 
