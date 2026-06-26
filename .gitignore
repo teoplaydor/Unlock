@@ -21,3 +21,16 @@ Thumbs.db
 keystore.properties
 *.apk
 *.aab
+
+# Secrets / env
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Private deploy workflow (contains production server host — keep local only)
+.github/workflows/publish-to-store.yml
